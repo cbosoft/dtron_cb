@@ -1,0 +1,18 @@
+# python stuff
+.env
+*.pyc
+__pycache__
+
+# editor stuff
+.idea
+*.un~
+
+# OS Stuff
+.DS_Store
+
+# working/test directories
+training_results
+experiments
+test_datasets_root
+test_experiments_root
+test_final_root
