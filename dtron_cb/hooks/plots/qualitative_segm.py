@@ -47,8 +47,8 @@ def plot_qualitative_segm(dataset: List[dict], model, rows=4, fn: str = None, w=
             ctr_y = [*ctr[1::2], ctr[1]]
             if crop is not None:
                 l, t, w, h = crop
-                ctr_x = [cx for cx in ctr_x if l < cx <= l+w]
-                ctr_y = [cy for cy in ctr_y if t < cy <= t+h]
+                ctr_x = [max(min(cx, l+w), l) for cx in ctr_x]
+                ctr_y = [max(min(cy, t+h), t) for cy in ctr_y]
             plt.plot(ctr_x, ctr_y, lw=3)
 
         plt.sca(pred_ax)
