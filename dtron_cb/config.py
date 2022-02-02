@@ -38,7 +38,7 @@ def apply_defaults(config: CfgNode) -> CfgNode:
     config.EXPERIMENTS_META = CfgNode()
     config.EXPERIMENTS_META.ROOT = "training_results"
     config.EXPERIMENTS_META.FINAL_ROOT = None
-    config.EXPERIMENTS_META.COPY_ROOT = False
+    config.EXPERIMENTS_META.SHOULD_COPY_ROOT = False
 
     config.DATA = CfgNode()
     config.DATA.AUGMENTATIONS = [
@@ -60,9 +60,9 @@ def finalise(config: CfgNode):
 
     assert config.EXPERIMENTS_META.ROOT, f'"config.EXPERIMENTS_META.ROOT" must be set with a location to store experiment information while running.'
     config.OUTPUT_DIR = ensure_dir(f'{config.EXPERIMENTS_META.ROOT}/{today}')
-    config.EXPERIMENTS_META.COPY_ROOT = config.EXPERIMENTS_META.FINAL_ROOT is not None
+    config.EXPERIMENTS_META.SHOULD_COPY_ROOT = config.EXPERIMENTS_META.FINAL_ROOT is not None
 
-    if config.EXPERIMENTS_META.COPY_ROOT:
+    if config.EXPERIMENTS_META.SHOULD_COPY_ROOT:
         ensure_dir(config.EXPERIMENTS_META.FINAL_ROOT)
 
     if config.ACTION == "train":
