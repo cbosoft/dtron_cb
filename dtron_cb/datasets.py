@@ -9,10 +9,12 @@ from detectron2.data.datasets import load_coco_json
 from .config import CfgNode
 
 
-def register_test_train(root_path: str, json_file_path: str, train_frac=0.8):
+def register_test_train(root_path: str, json_file_path: str, train_frac=0.8, strip_empty=True):
     name, _ = os.path.splitext(os.path.basename(json_file_path))
 
     all_data = load_coco_json(json_file_path, root_path, name)
+    if strip_empty:
+        all_data = [d for d in all_data if d['annotations']]
     n = len(all_data)
     n_train = int(n*train_frac)
     np.random.shuffle(all_data)
@@ -37,4 +39,5 @@ def register_datasets(config: CfgNode):
     train_frac = config.DATASETS.TRAIN_FRACTION
     datasets_files = glob(f'{datasets_root}/*.json')
     for dsf in datasets_files:
-        register_test_train(datasets_root, dsf, train_frac=train_frac)
+        register_test_train(datasets_root, dsf, train_frac=train_frac,
+                            strip_empty=config.DATALOADER.FILTER_EMPTY_ANNOTATIONS)
