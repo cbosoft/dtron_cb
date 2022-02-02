@@ -45,6 +45,10 @@ def plot_qualitative_segm(dataset: List[dict], model, rows=4, fn: str = None, w=
             ctr = annot['segmentation'][0]
             ctr_x = [*ctr[0::2], ctr[0]]
             ctr_y = [*ctr[1::2], ctr[1]]
+            if crop is not None:
+                l, t, w, h = crop
+                ctr_x = [cx for cx in ctr_x if l < cx <= l+w]
+                ctr_y = [cy for cy in ctr_y if t < cy <= t+h]
             plt.plot(ctr_x, ctr_y, lw=3)
 
         plt.sca(pred_ax)
