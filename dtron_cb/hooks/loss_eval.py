@@ -78,8 +78,13 @@ class LossEvalHook(HookBase):
     def _get_metrics(self, data: dict) -> dict:
         self._model.eval()
         with torch.no_grad():
-            gt = instances_to_mask(data[0]['instances'])
-            pred = instances_to_mask(self._model(data)[0]['instances'], score_thresh=0.5)
+            try:
+                gt = instances_to_mask(data[0]['instances'])
+                pred = instances_to_mask(self._model(data)[0]['instances'], score_thresh=0.5)
+            except ValueError:
+                print('Failed to calculate metrics due to mask error')
+                self._model.train()
+                return {}
             pred = cv2.resize(pred.astype(np.uint8), gt.shape[::-1]).astype(bool)
             assert gt.shape == pred.shape, f'Ground truth and prediction need to be the same size: {gt.shape} != {pred.shape}'
             tp = np.sum(gt & pred)
