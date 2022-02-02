@@ -39,12 +39,12 @@ DATASETS:
   NAMES: "PolyS"
 DATA:
   AUGMENTATIONS:
-    - "T.ResizeShortestEdge(short_edge_length=[640, 672, 704, 736, 768, 800], max_size=1333, sample_style=\'choice\')"
+    - "T.ResizeShortestEdge(short_edge_length=[640, 672, 704, 736, 768, 800], max_size=1333, sample_style='choice')"
     - "T.RandomFlip()"
     - "T.RandomBrightness(0.9, 1.1)"
     - "T.RandomContrast(0.9, 1.1)"
 SOLVER:
-  MAX_ITERS: 5000
+  MAX_ITER: 5000
   WARMUP_ITERS: 500
   CHECKPOINT_PERIOD: 500
   STEPS:
