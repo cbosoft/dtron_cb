@@ -16,7 +16,6 @@ def instances_to_mask(instances: Instances, **kwargs):
 
 
 def _gt_instances_to_mask(instances: Instances):
-    print(instances.get_fields().keys())
     combined = np.zeros(instances.image_size, dtype=bool)
     masks = BitMasks.from_polygon_masks(instances.gt_masks, *instances.image_size)
     for mask in masks.tensor:
