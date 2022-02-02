@@ -29,11 +29,18 @@ def apply_defaults(config: CfgNode) -> CfgNode:
     config.DATASETS.TEST = None
     config.DATASETS.TRAIN_FRACTION = 0.8
 
-    config.DATALOADER.NUM_WORKERS = 1
+    config.TEST.EVAL_PERIOD = 100
     config.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 512
+
+    config.DATALOADER.NUM_WORKERS = 4
     config.MODEL.ROI_HEADS.NUM_CLASSES = 1
     config.MODEL.DEVICE = 'cuda' if is_cuda_available() else 'cpu'
+
     config.SOLVER.IMS_PER_BATCH = 4
+    config.SOLVER.MAX_ITER = 5000
+    config.SOLVER.WARMUP_ITERS = 500
+    config.SOLVER.CHECKPOINT_PERIOD = 500
+    config.SOLVER.STEPS = 4000, 4500
 
     config.EXPERIMENTS_META = CfgNode()
     config.EXPERIMENTS_META.ROOT = "training_results"
