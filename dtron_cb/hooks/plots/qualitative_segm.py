@@ -92,7 +92,6 @@ def plot_qualitative_segm(dataset: List[dict], model, rows=4, fn: str = None, w=
         plt.show()
     else:
         plt.savefig(fn)
-        plt.show()
         plt.close()
     GeneralizedRCNN.mask_threshold = othresh
 
