@@ -10,10 +10,13 @@ __all__ = ['instances_to_mask']
 def instances_to_mask(instances: Instances, **kwargs):
     if instances.has('pred_boxes'):
         return _pred_instances_to_mask(instances, **kwargs)
-    return _gt_instances_to_mask(instances)
+    elif instances.has('gt_masks'):
+        return _gt_instances_to_mask(instances)
+    raise ValueError('instances does not contain enough information to yield a mask')
 
 
 def _gt_instances_to_mask(instances: Instances):
+    print(instances.get_fields().keys())
     combined = np.zeros(instances.image_size, dtype=bool)
     masks = BitMasks.from_polygon_masks(instances.gt_masks, *instances.image_size)
     for mask in masks.tensor:
