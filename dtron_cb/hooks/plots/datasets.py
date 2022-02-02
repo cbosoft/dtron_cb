@@ -1,4 +1,5 @@
 from typing import List
+import os.path
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -38,9 +39,9 @@ def plot_dataset(dataset: List[dict], cols=5, rows=None, max_n=100, fn: str = No
 class DatasetPlotHook(HookBase):
 
     def __init__(self, cfg):
-        self.datasets = []
-        self.datasets.extend(cfg.DATASETS.TRAIN)
-        self.datasets.extend(cfg.DATASETS.TEST)
+        self.train = cfg.DATASETS.TRAIN
+        self.test = cfg.DATASETS.TEST
+        self.datasets = [*self.train, *self.test]
         self.output_dir = cfg.OUTPUT_DIR
 
     def before_train(self):
@@ -48,3 +49,17 @@ class DatasetPlotHook(HookBase):
         for d in self.datasets:
             ds = DatasetCatalog.get(d)
             plot_dataset(ds, fn=f'{self.output_dir}/dataset_{d}.pdf')
+
+        self.write_datasets_listing(self.train, f'{self.output_dir}/training_data_listing.txt')
+        self.write_datasets_listing(self.test, f'{self.output_dir}/test_data_listing.txt')
+
+    @staticmethod
+    def write_datasets_listing(datasets, destination: str):
+        listing = []
+        for dname in datasets:
+            dset = DatasetCatalog.get(dname)
+            for di in dset:
+                    listing.append(os.path.normpath(di['file_name']))
+        with open(destination, 'w') as f:
+            for line in listing:
+                f.write(f'{line}\n')
