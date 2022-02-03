@@ -69,17 +69,16 @@ def finalise(config: CfgNode):
     assert 0.1 < config.DATASETS.TRAIN_FRACTION < 0.9
 
     assert config.EXPERIMENTS_META.ROOT, f'"config.EXPERIMENTS_META.ROOT" must be set with a location to store experiment information while running.'
-    config.OUTPUT_DIR = ensure_dir(f'{config.EXPERIMENTS_META.ROOT}/{today}')
+    config.OUTPUT_DIR = ensure_dir(f'{config.EXPERIMENTS_META.ROOT}/{today}_{config.ACTION}')
     config.EXPERIMENTS_META.SHOULD_COPY_ROOT = config.EXPERIMENTS_META.FINAL_ROOT is not None
 
     if config.EXPERIMENTS_META.SHOULD_COPY_ROOT:
         ensure_dir(config.EXPERIMENTS_META.FINAL_ROOT)
 
+    if isinstance(config.DATASETS.NAMES, str):
+        config.DATASETS.NAMES = [config.DATASETS.NAMES]
+
     if config.ACTION in ('train', 'cross_validate'):
-        if isinstance(config.DATASETS.NAMES, str):
-            config.DATASETS.NAMES = [config.DATASETS.NAMES]
-        else:
-            config.DATASETS.NAMES = config.DATASETS.NAMES
         if not config.DATASETS.TRAIN:
             config.DATASETS.TRAIN = tuple([f'{n}_train' for n in config.DATASETS.NAMES])
             config.DATASETS.TEST = tuple([f'{n}_test' for n in config.DATASETS.NAMES])
