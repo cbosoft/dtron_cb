@@ -22,6 +22,10 @@ def plot_dataset(dataset: List[dict], cols=5, rows=None, max_n=100, fn: str = No
     for ax, d in zip(axes.flatten(), dataset):
         plt.sca(ax)
         im = cv2.imread(d['file_name'])
+        if im is None:
+            _fn = d['file_name']
+            plt.text(0, 0, f'imread failed {_fn}')
+            continue
         plt.imshow(im)
         for annot in d['annotations']:
             ctr = annot['segmentation'][0]

@@ -25,7 +25,7 @@ def plot_qualitative_segm(dataset: List[dict], model, rows=4, fn: str = None, w=
         dataset = np.random.choice(dataset, rows)
     sz = 7
     titles = ['Original', 'Ground Truth', 'Prediction', 'GT Mask', 'Predicted Mask']
-    fig, axes = plt.subplots(ncols=len(titles), nrows=len(dataset), figsize=(sz*len(titles), rows*sz))
+    fig, axes = plt.subplots(ncols=len(titles), nrows=len(dataset), figsize=(sz*len(titles), rows*sz), squeeze=False)
     for ax in axes.flatten():
         plt.sca(ax)
         plt.axis('off')
@@ -33,10 +33,13 @@ def plot_qualitative_segm(dataset: List[dict], model, rows=4, fn: str = None, w=
         plt.sca(ax)
         plt.title(ttl)
     for (orig_ax, gt_ax, pred_ax, gt_mask_ax, pred_mask_ax), d in zip(axes, dataset):
+        plt.sca(orig_ax)
         im = cv2.imread(d['file_name'])
+        if im is None:
+            plt.text(0, 0, 'imread failed')
+            continue
         if crop:
             im = T.CropTransform(*crop).apply_image(im)
-        plt.sca(orig_ax)
         plt.imshow(im)
 
         plt.sca(gt_ax)
