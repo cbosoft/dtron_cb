@@ -12,7 +12,8 @@ from .hooks import (
     QualitativeSegmHook,
     MetricsPlotHook,
     CopyCompleteHook,
-    WriteMetaHook
+    WriteMetaHook,
+    DeployModelHook
 )
 
 
@@ -29,7 +30,8 @@ class Trainer(DefaultTrainer):
             DatasetPlotHook(self.cfg),
             QualitativeSegmHook(self.cfg, self.model),
             MetricsPlotHook(self.cfg),
-            WriteMetaHook(self.cfg, self.model)
+            WriteMetaHook(self.cfg, self.model),
+            DeployModelHook(self.cfg, self.model)
         ])
 
         # Must be last
