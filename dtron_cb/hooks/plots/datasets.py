@@ -14,6 +14,8 @@ def plot_dataset(dataset: List[dict], cols=5, rows=None, max_n=100, fn: str = No
         dataset = np.random.choice(dataset, max_n)
     if rows is None:
         rows = len(dataset) // cols
+
+    rows = max(1, rows)
     sz = 7
     fig, axes = plt.subplots(ncols=cols, nrows=rows, figsize=(cols * sz, rows * sz))
     for ax in axes.flatten():
