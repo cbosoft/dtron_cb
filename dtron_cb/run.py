@@ -1,6 +1,6 @@
 from .config import read_config_file
 from .trainer import Trainer
-# from .predictor import Predictor
+from .predictor import COCOPredictor
 from .cross_validator import CrossValidator
 
 
@@ -13,7 +13,7 @@ def _run_training(cfg, filename):
 
 def _run_inference(cfg, filename):
     print(f'Running inference: "{filename}"')
-    predictor = Predictor(cfg)
+    predictor = COCOPredictor(cfg)
     predictor.predict()
 
 

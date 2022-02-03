@@ -6,3 +6,5 @@ PyYAML
 opencv-python
 detectron2
 shapely
+imutils
+tqdm
