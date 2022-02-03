@@ -1,6 +1,7 @@
 from .config import read_config_file
 from .trainer import Trainer
 # from .predictor import Predictor
+from .cross_validator import CrossValidator
 
 
 def _run_training(cfg, filename):
@@ -16,12 +17,20 @@ def _run_inference(cfg, filename):
     predictor.predict()
 
 
+def _run_xval(cfg, filename):
+    print(f'Running cross validation: "{filename}"')
+    xval = CrossValidator(cfg)
+    xval.cross_validate()
+
+
 def run(filename: str):
     cfg = read_config_file(filename)
 
     actions = dict(
         train=_run_training,
-        predict=_run_inference)
+        predict=_run_inference,
+        cross_validate=_run_xval
+    )
 
     if cfg.ACTION in actions:
         actions[cfg.ACTION](cfg, filename)

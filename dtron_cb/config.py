@@ -21,7 +21,7 @@ def get_config() -> CfgNode:
 
 def apply_defaults(config: CfgNode) -> CfgNode:
 
-    config.ACTION = 'train'
+    config.ACTION = 'train'  # one of 'train', 'predict', or 'cross_validate'
     config.PARENT = None
     config.DATASETS.ROOT = '/media/raid/cboyle/datasets'
     config.DATASETS.NAMES = None
@@ -30,9 +30,12 @@ def apply_defaults(config: CfgNode) -> CfgNode:
     config.DATASETS.TRAIN_FRACTION = 0.8
 
     config.TEST.EVAL_PERIOD = 100
-    config.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 512
+
+    config.CROSS_VALIDATION = CfgNode()
+    config.CROSS_VALIDATION.N_FOLDS = 5
 
     config.DATALOADER.NUM_WORKERS = 4
+    config.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 512
     config.MODEL.ROI_HEADS.NUM_CLASSES = 1
     config.MODEL.DEVICE = 'cuda' if is_cuda_available() else 'cpu'
 
@@ -40,7 +43,7 @@ def apply_defaults(config: CfgNode) -> CfgNode:
     config.SOLVER.MAX_ITER = 5000
     config.SOLVER.WARMUP_ITERS = 500
     config.SOLVER.CHECKPOINT_PERIOD = 500
-    config.SOLVER.STEPS = 4000, 4500
+    config.SOLVER.STEPS = 2000, 4000, 4500
 
     config.EXPERIMENTS_META = CfgNode()
     config.EXPERIMENTS_META.ROOT = "training_results"
@@ -72,14 +75,14 @@ def finalise(config: CfgNode):
     if config.EXPERIMENTS_META.SHOULD_COPY_ROOT:
         ensure_dir(config.EXPERIMENTS_META.FINAL_ROOT)
 
-    if config.ACTION == "train":
+    if config.ACTION in ('train', 'cross_validate'):
         if isinstance(config.DATASETS.NAMES, str):
-            names = [config.DATASETS.NAMES]
+            config.DATASETS.NAMES = [config.DATASETS.NAMES]
         else:
-            names = config.DATASETS.NAMES
+            config.DATASETS.NAMES = config.DATASETS.NAMES
         if not config.DATASETS.TRAIN:
-            config.DATASETS.TRAIN = tuple([f'{n}_train' for n in names])
-            config.DATASETS.TEST = tuple([f'{n}_test' for n in names])
+            config.DATASETS.TRAIN = tuple([f'{n}_train' for n in config.DATASETS.NAMES])
+            config.DATASETS.TEST = tuple([f'{n}_test' for n in config.DATASETS.NAMES])
 
     if config.SEED is None or config.SEED < 0:
         config.SEED = random.randint(0, 1_000_000)
