@@ -187,15 +187,19 @@ class COCOPredictor:
 
             im_ident = fn.replace('/', '-').replace('\\', '-')
             # im = cv2.resize(im, (512, 512))
-            # im = torch.as_tensor(im.astype('float32').transpose(2, 0, 1))
-            im = torch.as_tensor(oim.astype('float32')); im = torch.permute(im, (2, 0, 1))
+            # im = torch.as_tensor(oim.astype('float32').transpose(2, 0, 1))
+            im = torch.as_tensor(oim.astype('float32')); im = im.permute((2, 0, 1))
             inputs = [dict(image=im)]
             instances = self.model.inference(inputs, do_postprocess=True)[0]['instances']
 
-            scores = instances.scores
-            bboxes = instances.pred_boxes
-            cats = instances.pred_classes
-            masks = instances.pred_masks
+            try:
+                scores = instances.scores
+                bboxes = instances.pred_boxes
+                cats = instances.pred_classes
+                masks = instances.pred_masks
+            except AttributeError:
+                print(list(instances.get_fields().keys()))
+                raise
             for score, bbox, cat, mask in zip(scores, bboxes, cats, masks):
                 if score < 0.95:
                     continue
