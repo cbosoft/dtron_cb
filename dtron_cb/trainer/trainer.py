@@ -82,7 +82,13 @@ class Trainer(TrainerBase):
             LossEvalHook(self.config, self.model),
             DatasetPlotHook(self.config),
             QualitativeSegmHook(self.config, self.model),
-            MetricsPlotHook(self.config),
+            MetricsPlotHook(self.config,
+                            groups=dict(
+                                test_loss=r'loss/test/(.*)',
+                                train_loss=r'loss/train/(.*)'
+                            ),
+                            # xlbls={'epoch': r'.*loss.*'}
+            ),
             WriteMetaHook(self.config, self.model),
             DeployModelHook(self.config, self.model),
             PeriodicCheckpointer(self.checkpointer, self.config.SOLVER.CHECKPOINT_PERIOD),
