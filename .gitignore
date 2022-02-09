@@ -11,7 +11,7 @@ __pycache__
 .DS_Store
 
 # working/test directories
-training_results
+*_results
 experiments
 test_datasets_root
 test_experiments_root
