@@ -249,9 +249,9 @@ class COCOPredictor:
                 annotated_dataset.annotations.append(anndata)
 
             # write out segmented image
-            cv2.imwrite(f'{self.images_dir}/{im_ident}', oimc)
+            cv2.imwrite(f'{self.images_dir}/n={n}_{im_ident}', oimc)
 
-        annotated_dataset.write_out(f'{self.output_dir}/annot_{today}_{ds_name}_n={n}.json')
+        annotated_dataset.write_out(f'{self.output_dir}/annot_{today}_{ds_name}.json')
 
         particles.write_out(f'{self.output_dir}/particles.csv', comment='lengths are in pixels')
 
