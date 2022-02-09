@@ -183,6 +183,7 @@ class COCOPredictor:
 
             oim = cv2.imread(fn)
             oimc = oim.copy()
+            n = 0
 
             if self.crop:
                 x1, y1, x2, y2 = self.crop
@@ -225,6 +226,7 @@ class COCOPredictor:
                     cnt = np.array(cnt[::fac], dtype=np.int32)
 
                 cv2.drawContours(oimc, [cnt], 0, (0, 255, 255), 2)
+                n += 1
 
                 particles.add(oimc, cnt[0], 1)  # TODO get px2um
 
@@ -249,7 +251,7 @@ class COCOPredictor:
             # write out segmented image
             cv2.imwrite(f'{self.images_dir}/{im_ident}', oimc)
 
-        annotated_dataset.write_out(f'{self.output_dir}/annot_{today}_{ds_name}.json')
+        annotated_dataset.write_out(f'{self.output_dir}/annot_{today}_{ds_name}_n={n}.json')
 
         particles.write_out(f'{self.output_dir}/particles.csv', comment='lengths are in pixels')
 
