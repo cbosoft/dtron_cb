@@ -139,6 +139,8 @@ class Particles:
 
 class COCOPredictor:
 
+    MAX_N_POLYGON = 25
+
     def __init__(self, config: CfgNode):
         self.output_dir = config.OUTPUT_DIR
         self.images_dir = ensure_dir(f'{self.output_dir}/segmented_images')
@@ -211,11 +213,18 @@ class COCOPredictor:
                 cnt = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
                 # if multiple contours are found; just take the largest
                 if len(cnt) > 1:
-                    cnt = [sorted(cnt, key=lambda c: cv2.contourArea(c))[-1]]
+                    cnt = sorted(cnt, key=lambda c: cv2.contourArea(c))[-1]
+                else:
+                    cnt = cnt[0]
+                cnt = cv2.convexHull(cnt)
+                npoints = len(cnt)
+                fac = int(npoints / self.MAX_N_POLYGON)
+                if fac > 1:
+                    # extra array constructor is required, opencv is funny about contours
+                    cnt = np.array(cnt[::fac], dtype=np.int32)
 
                 oimc = oim.copy()
                 cv2.drawContours(oimc, cnt, 0, (0, 255, 255), 2)
-                cv2.imwrite(f'{self.images_dir}/{im_ident}', oimc)
 
                 particles.add(oimc, cnt[0], 1)  # TODO get px2um
 
@@ -236,6 +245,9 @@ class COCOPredictor:
                     area=area
                 )
                 annotated_dataset.annotations.append(anndata)
+
+            # write out segmented image
+            cv2.imwrite(f'{self.images_dir}/{im_ident}', oimc)
 
         annotated_dataset.write_out(f'{self.output_dir}/annot_{today}_{ds_name}.json')
 
