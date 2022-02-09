@@ -182,6 +182,7 @@ class COCOPredictor:
             annotated_dataset.images.append(imdata)
 
             oim = cv2.imread(fn)
+            oimc = oim.copy()
 
             if self.crop:
                 x1, y1, x2, y2 = self.crop
@@ -223,7 +224,6 @@ class COCOPredictor:
                     # extra array constructor is required, opencv is funny about contours
                     cnt = np.array(cnt[::fac], dtype=np.int32)
 
-                oimc = oim.copy()
                 cv2.drawContours(oimc, [cnt], 0, (0, 255, 255), 2)
 
                 particles.add(oimc, cnt[0], 1)  # TODO get px2um
