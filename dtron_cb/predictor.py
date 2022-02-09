@@ -224,7 +224,7 @@ class COCOPredictor:
                     cnt = np.array(cnt[::fac], dtype=np.int32)
 
                 oimc = oim.copy()
-                cv2.drawContours(oimc, cnt, 0, (0, 255, 255), 2)
+                cv2.drawContours(oimc, [cnt], 0, (0, 255, 255), 2)
 
                 particles.add(oimc, cnt[0], 1)  # TODO get px2um
 
