@@ -44,6 +44,7 @@ def apply_defaults(config: CfgNode) -> CfgNode:
     config.SOLVER.WARMUP_ITERS = 500
     config.SOLVER.CHECKPOINT_PERIOD = 500
     config.SOLVER.STEPS = 2000, 4000, 4500
+    config.SOLVER.N_EPOCHS = 100
 
     config.EXPERIMENTS_META = CfgNode()
     config.EXPERIMENTS_META.ROOT = "training_results"
