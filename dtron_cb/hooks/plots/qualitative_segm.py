@@ -18,7 +18,7 @@ from ...config import CfgNode
 Int4 = Tuple[int, int, int, int]
 
 
-def plot_qualitative_segm(dataset: List[dict], model, rows=4, fn: str = None, w=3, score_thresh=0.9, crop: Optional[Int4] = None):
+def plot_qualitative_segm(dataset: List[dict], model, rows=4, fn: str = None, w=3, px_thresh=0.5, ov_thresh=0.5, crop: Optional[Int4] = None):
     othresh = 0.5
     GeneralizedRCNN.mask_threshold = -1
     if len(dataset) > rows:
@@ -64,7 +64,7 @@ def plot_qualitative_segm(dataset: List[dict], model, rows=4, fn: str = None, w=
 
         for i, (mask_t, score) in enumerate(zip(inst.pred_masks, inst.scores)):
             score = float(score.cpu())
-            if score < score_thresh: continue
+            if score < ov_thresh: continue
             mask: np.ndarray = mask_t.cpu().numpy()
             submask = plt.cm.viridis(mask/255)
             submask[:, :, 3] = np.where(mask < 0.1, 0.0, 0.2)
@@ -78,7 +78,7 @@ def plot_qualitative_segm(dataset: List[dict], model, rows=4, fn: str = None, w=
 
         for i, (bbox, score) in enumerate(zip(inst.pred_boxes, inst.scores)):
             score = float(score.cpu())
-            if score < score_thresh: continue
+            if score < ov_thresh: continue
             x1, y1, x2, y2 = bbox.cpu().numpy().astype(int)
             x = [x1, x2, x2, x1, x1]
             y = [y1, y1, y2, y2, y1]
@@ -87,7 +87,7 @@ def plot_qualitative_segm(dataset: List[dict], model, rows=4, fn: str = None, w=
         # TODO GT_MASK
 
         plt.sca(pred_mask_ax)
-        mask = instances_to_mask(inst, score_thresh=score_thresh, mask_thresh=othresh)
+        mask = instances_to_mask(inst, score_thresh=ov_thresh, mask_thresh=px_thresh)
         plt.imshow(mask, cmap='gray')
 
     plt.tight_layout()
@@ -111,14 +111,16 @@ class QualitativeSegmHook(HookBase):
         # self.final_cfg.MODEL.WEIGHTS = f'{self.output_dir}/model-final.pth'
         self.model = model
         self.crop = cfg.DATA.CROP
+        self.ov_thresh = cfg.INFERENCE.OVERALL_THRESH
+        self.px_thresh = cfg.INFERENCE.PIXEL_THRESH
 
     def before_train(self):
         self.model.eval()
         with torch.no_grad():
             for testn in self.test:
                 dataset = DatasetCatalog.get(testn)
-                plot_qualitative_segm(dataset, self.model, fn=f'{self.output_dir}/qualitative_segm_before.pdf',
-                                      crop=self.crop)
+                plot_qualitative_segm(dataset, self.model, fn=f'{self.output_dir}/qualitative_segm_before_{testn}.pdf',
+                                      crop=self.crop, px_thresh=self.px_thresh, ov_thresh=self.ov_thresh)
         self.model.train()
 
     def after_train(self):
@@ -126,6 +128,6 @@ class QualitativeSegmHook(HookBase):
         with torch.no_grad():
             for testn in self.test:
                 dataset = DatasetCatalog.get(testn)
-                plot_qualitative_segm(dataset, self.model, fn=f'{self.output_dir}/qualitative_segm_after.pdf',
-                                      crop=self.crop)
+                plot_qualitative_segm(dataset, self.model, fn=f'{self.output_dir}/qualitative_segm_after_{testn}.pdf',
+                                      crop=self.crop, px_thresh=self.px_thresh, ov_thresh=self.ov_thresh)
         self.model.train()

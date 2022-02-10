@@ -60,6 +60,10 @@ def apply_defaults(config: CfgNode) -> CfgNode:
     ]
     config.DATA.CROP = None
 
+    config.INFERENCE = CfgNode()
+    config.INFERENCE.PIXEL_THRESH = 0.5
+    config.INFERENCE.OVERALL_THRESH = 0.5
+
     return config
 
 
