@@ -38,6 +38,9 @@ def register_datasets(config: CfgNode):
     datasets_root = config.DATASETS.ROOT
     train_frac = config.DATASETS.TRAIN_FRACTION
     datasets_files = glob(f'{datasets_root}/*.json')
+
+    DatasetCatalog.clear()
+    MetadataCatalog.clear()
     for dsf in datasets_files:
         register_test_train(datasets_root, dsf, train_frac=train_frac,
                             strip_empty=config.DATALOADER.FILTER_EMPTY_ANNOTATIONS)
