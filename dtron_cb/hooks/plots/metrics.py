@@ -10,6 +10,12 @@ from ...utils.read_metrics_json import read_metrics_json
 from ...utils.string_san import path_safe
 
 
+if hasattr(re, 'Pattern'):
+    RegexPattern = re.Pattern
+else:
+    RegexPattern = str
+
+
 class LabelsByPattern:
 
     def __init__(self, lbls_and_patterns: Dict[str, str]):
@@ -23,7 +29,7 @@ class LabelsByPattern:
 
 
 def metrics_plot(metrics_json_path: str, outfn: str = None,
-                 groups: Dict[str, re.Pattern] = None,
+                 groups: Dict[str, RegexPattern] = None,
                  x_kind: LabelsByPattern = None):
     data = read_metrics_json(metrics_json_path)
     metrics = defaultdict(list)
@@ -83,7 +89,7 @@ class MetricsPlotHook(HookBase):
 
     def __init__(self, cfg, groups=None, xlbls=None):
         self.output_dir = cfg.OUTPUT_DIR
-        self.groups: Dict[str, re.Pattern] = {k: re.compile(v) for k, v in groups.items()} if groups else {}
+        self.groups: Dict[str, RegexPattern] = {k: re.compile(v) for k, v in groups.items()} if groups else {}
         self.xlbls = LabelsByPattern(xlbls if xlbls else {})
 
     def after_train(self):
