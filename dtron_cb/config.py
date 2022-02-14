@@ -94,10 +94,10 @@ def finalise(config: CfgNode):
     np.random.seed(config.SEED)
     torch.manual_seed(config.SEED)
 
-    config.freeze()
-
+    # also sets max_iter to n_epochs*number_batches
     register_datasets(config)
 
+    config.freeze()
     return config
 
 
