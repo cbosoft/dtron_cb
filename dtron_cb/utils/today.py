@@ -1,14 +1,14 @@
 from datetime import datetime
 
 
-def _today() -> str:
-    return datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+def today() -> str:
+    return _today
 
 
 def tick() -> str:
-    global today
-    today = _today()
-    return today
+    global _today
+    _today = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    return _today
 
 
-today = _today()
+_today = tick()
