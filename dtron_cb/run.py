@@ -2,6 +2,7 @@ from .config import read_config_file
 from .trainer import Trainer
 from .predictor import COCOPredictor
 from .cross_validator import CrossValidator
+from .utils.today import tick
 
 
 def _run_training(cfg, filename):
@@ -24,6 +25,7 @@ def _run_xval(cfg, filename):
 
 
 def run(filename: str):
+    tick()
     cfg = read_config_file(filename)
 
     actions = dict(
