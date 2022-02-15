@@ -1,3 +1,5 @@
+import os
+
 import cv2
 import numpy as np
 from imutils import perspective
@@ -86,6 +88,7 @@ class Particle:
 
     def to_dict(self) -> dict:
         return dict(
+            image_file_name=str(self.image_file_name),
             width=float(self.width),
             length=float(self.length),
             bbox=[float(v) for v in self.bbox],
@@ -97,6 +100,15 @@ class Particle:
             centroid=[float(v) for v in self.centroid]
         )
 
+    @staticmethod
+    def prep(v) -> str:
+        if isinstance(v, str):
+            if os.path.exists(v):
+                v = os.path.normpath(v)
+            return f'"{v}"'
+        else:
+            return f'{v}'
+
     def to_csv_line(self) -> str:
         d = self.to_dict()
-        return ','.join([f'{d[k]}' for k in self.CSV_HEADER])
+        return ','.join([self.prep(d[k]) for k in self.CSV_HEADER])

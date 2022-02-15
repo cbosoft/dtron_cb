@@ -122,8 +122,8 @@ class Particles:
     def __init__(self):
         self.particles: List[Particle] = []
 
-    def add(self, image: np.array, contour, px2um):
-        self.particles.append(Particle(image, contour, px2um))
+    def add(self, fn: str, orig_image: np.ndarray, contour, px2um):
+        self.particles.append(Particle(fn, orig_image, contour, px2um))
 
     def write_out(self, fn: str, comment=None):
         csv_lines = [','.join(Particle.CSV_HEADER)]
