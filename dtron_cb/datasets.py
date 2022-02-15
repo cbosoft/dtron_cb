@@ -45,7 +45,7 @@ def register_datasets(config: CfgNode):
         register_test_train(datasets_root, dsf, train_frac=train_frac,
                             strip_empty=config.DATALOADER.FILTER_EMPTY_ANNOTATIONS)
 
-    if config.action in ('train', 'xval'):
+    if config.ACTION in ('train', 'xval'):
         number_batches = sum([len(DatasetCatalog.get(dsname)) for dsname in config.DATASETS.TRAIN])
         config.SOLVER.MAX_ITER = config.SOLVER.N_EPOCHS * number_batches
     else:
