@@ -3,6 +3,10 @@ import numpy as np
 from imutils import perspective
 
 
+class ParticleConstructionError(Exception):
+    """Particle could not be constructed."""
+
+
 def midp(pt1, pt2):
     return np.mean([pt1, pt2], axis=0)
 
@@ -39,11 +43,17 @@ def size_of_box(box):
 
 class Particle:
 
-    CSV_HEADER = ('width', 'length', 'area', 'perimeter', 'convex_area', 'convex_perimeter')
+    CSV_HEADER = ('image_file_name', 'width', 'length', 'area', 'perimeter', 'convex_area', 'convex_perimeter', 'focus_GDER')
 
-    def __init__(self, original_image: np.array, contour, px2um: float):
+    def __init__(self, orig_img_fn: str, orig_image: np.ndarray, contour, px2um: float):
+
+        if len(contour) < 3:
+            raise ParticleConstructionError('small contour')
+
+        self.image_file_name = orig_img_fn
         self.contour = contour
         moments = cv2.moments(contour)
+
         try:
             self.centroid = int(moments['m10']/moments['m00'])*px2um, int(moments['m01']/moments['m00'])*px2um
         except ZeroDivisionError:

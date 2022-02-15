@@ -14,7 +14,7 @@ from detectron2.checkpoint import DetectionCheckpointer
 from .utils.today import today
 from .utils.ensure_dir import ensure_dir
 from .config import CfgNode
-from .particle import Particle
+from .particle import Particle, ParticleConstructionError
 
 
 Int4 = Tuple[int, int, int, int]
@@ -225,10 +225,14 @@ class COCOPredictor:
                     # extra array constructor is required, opencv is funny about contours
                     cnt = np.array(cnt[::fac], dtype=np.int32)
 
+                try:
+                    particles.add(fn, oimc, cnt, self.px2um)
+                except ParticleConstructionError as e:
+                    print(f'Not adding particle: {e}')
+                    continue
+
                 cv2.drawContours(oimc, [cnt], 0, (0, 255, 255), 2)
                 n += 1
-
-                particles.add(oimc, cnt[0], 1)  # TODO get px2um
 
                 # convert [[[x, y]], ... ] format to [x, y, x, y, ...]
                 cnt = np.array(cnt)
