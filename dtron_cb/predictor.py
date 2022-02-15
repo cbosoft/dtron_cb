@@ -189,7 +189,7 @@ class COCOPredictor:
                 x1, y1, x2, y2 = self.crop
                 oim = oim[y1:y2, x1:x2]
 
-            im_ident = fn.replace('/', '-').replace('\\', '-')
+            im_ident = fn.replace('/', '-').replace('\\', '-')[:-4]
             # im = cv2.resize(im, (512, 512))
             # im = torch.as_tensor(oim.astype('float32').transpose(2, 0, 1))
             im = torch.as_tensor(oim.astype('float32')); im = im.permute((2, 0, 1))
@@ -253,7 +253,7 @@ class COCOPredictor:
                 annotated_dataset.annotations.append(anndata)
 
             # write out segmented image
-            cv2.imwrite(f'{self.images_dir}/n={n}_{im_ident}', oimc)
+            cv2.imwrite(f'{self.images_dir}/{im_ident}_n={n}.png', oimc)
 
         annotated_dataset.write_out(f'{self.output_dir}/annot_{today()}_{ds_name}.json')
 
