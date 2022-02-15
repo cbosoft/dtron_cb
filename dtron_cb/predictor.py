@@ -155,6 +155,9 @@ class COCOPredictor:
         self.datasets_root = config.DATASETS.ROOT
 
         self.crop = config.DATA.CROP
+        self.px2um = config.INFERENCE.PX_TO_UM
+        self.px_thresh = config.INFERENCE.PIXEL_THRESH
+        self.overall_thresh = config.INFERENCE.OVERALL_THRESH
 
     def predict(self):
         for ds_name in self.datasets:
@@ -205,7 +208,7 @@ class COCOPredictor:
                 print(list(instances.get_fields().keys()))
                 raise
             for score, bbox, cat, mask in zip(scores, bboxes, cats, masks):
-                if score < 0.95:
+                if score < self.overall_thresh:
                     continue
 
                 x1, y1, x2, y2 = bbox
