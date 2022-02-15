@@ -218,7 +218,7 @@ class COCOPredictor:
                     cnt = sorted(cnt, key=lambda c: cv2.contourArea(c))[-1]
                 else:
                     cnt = cnt[0]
-                cnt = cv2.convexHull(cnt)
+                # cnt = cv2.convexHull(cnt)
                 npoints = len(cnt)
                 fac = int(npoints / self.MAX_N_POLYGON)
                 if fac > 1:
