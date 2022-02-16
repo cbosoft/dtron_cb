@@ -145,6 +145,17 @@ class Particle:
         )
 
     @staticmethod
+    def unit_of(k):
+        if k in []:
+            return 'px'
+        elif k in ['length', 'width', 'perimeter', 'convex_perimeter']:
+            return '$\\rm \\mu m$'
+        elif k in ['area', 'convex_area']:
+            return '$\\rm \\mu m^2$'
+        else:
+            return '-'
+
+    @staticmethod
     def prep(v) -> str:
         if isinstance(v, str):
             if os.path.exists(v):
