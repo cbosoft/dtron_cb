@@ -129,7 +129,7 @@ class Particles:
         csv_lines = [','.join(Particle.CSV_HEADER)]
         if comment:
             csv_lines.insert(0, '# ' + comment)
-        for particle in self.particles:
+        for particle in sorted(self.particles):
             csv_lines.append(particle.to_csv_line())
 
         with open(fn, 'w') as f:

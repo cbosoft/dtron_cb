@@ -99,6 +99,9 @@ class Particle:
         cutout = orig_image[y:y+h, x:x+w]
         self.focus_GDER = self.fmeasure_GDER(cutout)
 
+    def __lt__(self, other: "Particle") -> bool:
+        return self.image_file_name < other.image_file_name
+
     @staticmethod
     def fmeasure_GDER(img: np.ndarray, w_size=15):
         # Create a Gaussian kernel
