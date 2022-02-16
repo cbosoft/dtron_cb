@@ -122,8 +122,8 @@ class Particles:
     def __init__(self):
         self.particles: List[Particle] = []
 
-    def add(self, fn: str, orig_image: np.ndarray, contour, px2um):
-        self.particles.append(Particle(fn, orig_image, contour, px2um))
+    def add(self, fn: str, orig_image: np.ndarray, contour, px2um, score):
+        self.particles.append(Particle(fn, orig_image, contour, px2um, score))
 
     def write_out(self, fn: str, comment=None):
         csv_lines = [','.join(Particle.CSV_HEADER)]
@@ -229,7 +229,7 @@ class COCOPredictor:
                     cnt = np.array(cnt[::fac], dtype=np.int32)
 
                 try:
-                    particles.add(fn, oimc, cnt, self.px2um)
+                    particles.add(fn, oimc, cnt, self.px2um, float(score))
                 except ParticleConstructionError as e:
                     print(f'Not adding particle: {e}')
                     continue

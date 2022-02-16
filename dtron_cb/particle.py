@@ -45,9 +45,11 @@ def size_of_box(box):
 
 class Particle:
 
-    CSV_HEADER = ('image_file_name', 'width', 'length', 'area', 'perimeter', 'convex_area', 'convex_perimeter', 'focus_GDER')
+    CSV_HEADER = ('image_file_name', 'width', 'length', 'aspect_ratio', 'area', 'perimeter', 'form_factor', 'circularity',
+                  'convex_area', 'convex_perimeter', 'convexity',
+                  'focus_GDER', 'confidence_score')
 
-    def __init__(self, orig_img_fn: str, orig_image: np.ndarray, contour, px2um: float):
+    def __init__(self, orig_img_fn: str, orig_image: np.ndarray, contour, px2um: float, conf_score: float):
 
         if len(contour) < 3:
             raise ParticleConstructionError('small contour')
@@ -55,6 +57,8 @@ class Particle:
         self.image_file_name = orig_img_fn
         self.contour = contour
         moments = cv2.moments(contour)
+
+        self.conf_score = conf_score
 
         try:
             self.centroid = int(moments['m10']/moments['m00'])*px2um, int(moments['m01']/moments['m00'])*px2um
@@ -80,9 +84,16 @@ class Particle:
         self.min_area_rect = np.int0(box)
         self.bbox = x, y, w, h = cv2.boundingRect(contour)  # x, y, w, h
         try:
-            self.circularity = 4*self.area*np.pi/self.perimeter**2
+            # BS ISO 9276-1:1998
+            self.form_factor = 4*self.area*np.pi/self.perimeter**2
+            self.circularity = np.sqrt(self.form_factor)
         except ZeroDivisionError:
-            self.circularity = np.nan
+            self.circularity = self.form_factor = np.nan
+
+        try:
+            self.convexity = self.convex_perimeter / self.perimeter
+        except ZeroDivisionError:
+            self.convexity = np.nan
 
         # TODO focus metrics
         cutout = orig_image[y:y+h, x:x+w]
@@ -118,14 +129,19 @@ class Particle:
             image_file_name=str(self.image_file_name),
             width=float(self.width),
             length=float(self.length),
+            aspect_ratio=float(self.aspect_ratio),
             bbox=[float(v) for v in self.bbox],
             min_area_rect=[(int(x), int(y)) for x, y in self.min_area_rect[:]],
             area=float(self.area),
             perimeter=float(self.perimeter),
+            form_factor=float(self.form_factor),
+            circularity=float(self.circularity),
             convex_area=float(self.convex_area),
             convex_perimeter=float(self.perimeter),
+            convexity=float(self.convexity),
             centroid=[float(v) for v in self.centroid],
-            focus_GDER=float(self.focus_GDER)
+            focus_GDER=float(self.focus_GDER),
+            confidence_score=float(self.conf_score)
         )
 
     @staticmethod
