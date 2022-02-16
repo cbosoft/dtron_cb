@@ -78,13 +78,40 @@ class Particle:
         self.length *= px2um
         self.aspect_ratio = self.width / self.length
         self.min_area_rect = np.int0(box)
-        self.bbox = cv2.boundingRect(contour)  # x, y, w, h
+        self.bbox = x, y, w, h = cv2.boundingRect(contour)  # x, y, w, h
         try:
             self.circularity = 4*self.area*np.pi/self.perimeter**2
         except ZeroDivisionError:
             self.circularity = np.nan
 
         # TODO focus metrics
+        cutout = orig_image[y:y+h, x:x+w]
+        self.focus_GDER = self.fmeasure_GDER(cutout)
+
+    @staticmethod
+    def fmeasure_GDER(img: np.ndarray, w_size=15):
+        # Create a Gaussian kernel
+        N = w_size // 2
+        sig = N / 2.5
+        sig2 = sig * sig
+        x = y = np.linspace(-N, N, w_size)
+        x, y = np.meshgrid(x, y)
+        g = np.exp(-(x ** 2 + y ** 2) / (2 * sig ** 2)) / (2 * np.pi * sig)
+
+        # Split into x and y kernels
+        g_x = -x * g / sig2
+        g_x = g_x / np.sum(np.abs(g_x))
+        g_y = -y * g / sig2
+        g_y = g_y / np.sum(np.abs(g_y))
+
+        # x, y kernel convolutions
+        r_x = cv2.filter2D(img, cv2.CV_8U, g_x)
+        r_y = cv2.filter2D(img, cv2.CV_8U, g_y)
+        fm = r_x ** 2 + r_y ** 2
+
+        # Final value is the mean
+        fm = fm.mean()
+        return fm
 
     def to_dict(self) -> dict:
         return dict(
@@ -97,7 +124,8 @@ class Particle:
             perimeter=float(self.perimeter),
             convex_area=float(self.convex_area),
             convex_perimeter=float(self.perimeter),
-            centroid=[float(v) for v in self.centroid]
+            centroid=[float(v) for v in self.centroid],
+            focus_GDER=float(self.focus_GDER)
         )
 
     @staticmethod
