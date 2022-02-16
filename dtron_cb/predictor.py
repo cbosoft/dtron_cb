@@ -119,8 +119,8 @@ class COCO_Dataset:
 
 class Particles:
 
-    def __init__(self):
-        self.particles: List[Particle] = []
+    def __init__(self, *particles):
+        self.particles: List[Particle] = [*particles]
 
     def add(self, fn: str, orig_image: np.ndarray, contour, px2um, score):
         self.particles.append(Particle(fn, orig_image, contour, px2um, score))
@@ -135,6 +135,33 @@ class Particles:
         with open(fn, 'w') as f:
             for line in csv_lines:
                 f.write(f'{line}\n')
+
+    def split_by_dir(self) -> Dict[str, "Particles"]:
+        by_dir = dict()
+        for p in self.particles:
+            fn = p.image_file_name
+            dn = os.path.dirname(fn)
+            if dn not in by_dir:
+                by_dir[dn] = list()
+            by_dir[dn].append(p)
+
+        return {k: Particles(*sorted(v)) for k, v in by_dir.items()}
+
+    def split_by_fn_chunks(self, fnss: List[str]):
+        chunks = [list() for _ in fnss]
+        for i, fns in enumerate(fnss):
+            for p in self.particles:
+                if p.image_file_name in fns:
+                    chunks[i].append(p)
+        return chunks
+
+    def to_dict(self) -> Dict[str, list]:
+        values = {k: list() for k in Particle.CSV_HEADER}
+        for p in self.particles:
+            d = p.to_dict()
+            for k in Particle.CSV_HEADER:
+                values[k].append(d[k])
+        return values
 
 
 class COCOPredictor:
