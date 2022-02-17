@@ -38,6 +38,7 @@ def apply_defaults(config: CfgNode) -> CfgNode:
     config.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 512
     config.MODEL.ROI_HEADS.NUM_CLASSES = 1
     config.MODEL.DEVICE = 'cuda' if is_cuda_available() else 'cpu'
+    config.MODEL.META_ARCHITECTURE = 'CB_GeneralizedRCNN'
 
     config.SOLVER.IMS_PER_BATCH = 4
     config.SOLVER.MAX_ITER = 5000
