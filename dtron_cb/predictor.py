@@ -6,6 +6,7 @@ import cv2
 import torch
 from tqdm import tqdm
 import numpy as np
+from matplotlib import pyplot as plt
 
 from detectron2.data import DatasetCatalog, MetadataCatalog
 from detectron2.modeling import build_model
@@ -289,4 +290,67 @@ class COCOPredictor:
 
         particles.write_out(f'{self.output_dir}/particles.csv', comment='lengths are in pixels')
 
+        self.plot_particles(particles)
+
+        particles_by_dir = particles.split_by_dir()
+        for dn, ps in particles_by_dir.items():
+            self.plot_n_particles_dynamic(ps, dn.replace('/', '-').replace('\\', '-'))
+
         print(len(annotated_dataset.annotations))
+
+    def plot_particles(self, particles, tag=''):
+        if isinstance(particles, Particles):
+            particles = particles.particles
+        keys = Particle.CSV_HEADER
+        dicts = [p.to_dict() for p in particles]
+        values = {k: [d[k] for d in dicts] for k in keys}
+        plot_specs = [
+            ('length', 'width'),
+            ('length', 'circularity'),
+            ('width', 'focus_GDER'),
+            ('focus_GDER', 'convexity')
+        ]
+
+        for xlbl, ylbl in plot_specs:
+            x = values[xlbl]
+            y = values[ylbl]
+            xunit = Particle.unit_of(xlbl)
+            yunit = Particle.unit_of(ylbl)
+            plt.figure()
+            plt.plot(x, y, 'o', alpha=0.5)
+            plt.xlabel(f'{xlbl} [{xunit}]')
+            plt.ylabel(f'{ylbl} [{yunit}]')
+            plt.tight_layout()
+            plt.savefig(f'{self.output_dir}/fig_{ylbl}_v_{xlbl}{tag}.pdf')
+            plt.close()
+
+    def get_fn_chunks(self):
+        fns = []
+        for dsname in self.datasets:
+            fns.extend([d['file_name'] for d in DatasetCatalog.get(dsname)])
+        fns = sorted(fns)
+
+        w = 20
+        fn_chunks = [fns[i:i+w] for i in range(0, len(fns), w)]
+        return fn_chunks
+
+    def plot_n_particles_dynamic(self, particles, tag):
+        chunks = self.get_fn_chunks()
+        particless = particles.split_by_fn_chunks(chunks)
+
+        x = np.arange(len(chunks))
+        y = np.zeros_like(x)
+        for i, particles in enumerate(particless):
+            y[i] = len(particles)
+
+        max_ticks = 10
+        xtl = ['...'+c[0][-10:] for c in chunks][::len(x)//max_ticks]
+        xt = x[::len(x)//max_ticks]
+
+        plt.figure()
+        plt.plot(x, y)
+        plt.xticks(xt, xtl, rotation=45, ha='right')
+        plt.ylabel('Particle count')
+        plt.tight_layout()
+        plt.savefig(f'{self.output_dir}/fig_particle_count{tag}.pdf')
+        plt.close()
