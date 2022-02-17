@@ -64,9 +64,11 @@ def plot_qualitative_segm(dataset: List[dict], model, rows=4, fn: str = None, w=
 
         for i, (mask_t, score) in enumerate(zip(inst.pred_masks, inst.scores)):
             score = float(score.cpu())
-            if score < ov_thresh: continue
+            if score < ov_thresh:
+                continue
             mask: np.ndarray = mask_t.cpu().numpy()
-            submask = plt.cm.viridis(mask/255)
+
+            submask = plt.cm.viridis(mask*255)
             submask[:, :, 3] = np.where(mask < 0.1, 0.0, 0.2)
             alpha_s = submask[:, :, 3]
             alpha_c = 1.0 - alpha_s
