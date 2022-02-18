@@ -235,26 +235,24 @@ class COCOPredictor:
             except AttributeError:
                 print(list(instances.get_fields().keys()))
                 raise
-            for score, bbox, cat, mask in zip(scores, bboxes, cats, masks):
-                if score < self.overall_thresh:
-                    continue
+
+            composite = cv2.cvtColor(oim, cv2.COLOR_BGR2RGB)
+            for i, (mask_t, score, bbox, cat) in enumerate(zip(masks, scores, bboxes, cats)):
 
                 x1, y1, x2, y2 = bbox
                 bbox = x, y, w, h = int(x1), int(y1), int(x2-x1), int(y2-y1)
                 area = w*h
-                mask = (mask.cpu().numpy()*255).astype(np.uint8)
+                score = float(score.cpu())
+                if score < self.overall_thresh:
+                    continue
+
+                mask = (mask_t.cpu().numpy()*255).astype(np.uint8)
                 cnt = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
                 # if multiple contours are found; just take the largest
                 if len(cnt) > 1:
                     cnt = sorted(cnt, key=lambda c: cv2.contourArea(c))[-1]
                 else:
                     cnt = cnt[0]
-                # cnt = cv2.convexHull(cnt)
-                npoints = len(cnt)
-                fac = int(npoints / self.MAX_N_POLYGON)
-                if fac > 1:
-                    # extra array constructor is required, opencv is funny about contours
-                    cnt = np.array(cnt[::fac], dtype=np.int32)
 
                 try:
                     particles.add(fn, oimc, cnt, self.px2um, float(score))
@@ -262,7 +260,8 @@ class COCOPredictor:
                     print(f'Not adding particle: {e}')
                     continue
 
-                cv2.drawContours(oimc, [cnt], 0, (0, 255, 255), 2)
+                c = [ci*255 for ci in plt.cm.viridis(score)[:3]]
+                cv2.drawContours(composite, [cnt], 0, c, 2)
                 n += 1
 
                 # convert [[[x, y]], ... ] format to [x, y, x, y, ...]
@@ -283,8 +282,14 @@ class COCOPredictor:
                 )
                 annotated_dataset.annotations.append(anndata)
 
-            # write out segmented image
-            cv2.imwrite(f'{self.images_dir}/{im_ident}_n={n}.png', oimc)
+                submask = (plt.cm.viridis(mask)*255).astype(np.uint8)
+                alpha_s = np.where(mask < 5, 0.0, 0.3)
+                alpha_c = 1.0 - alpha_s
+                for c in range(3):
+                    composite[:, :, c] = submask[:, :, c] * alpha_s + composite[:, :, c] * alpha_c
+            composite = cv2.cvtColor(composite, cv2.COLOR_BGR2RGB)
+            cv2.imwrite(f'{self.images_dir}/{im_ident}_n={n}.png', composite)
+
 
         annotated_dataset.write_out(f'{self.output_dir}/annot_{today()}_{ds_name}.json')
 
@@ -308,7 +313,9 @@ class COCOPredictor:
             ('length', 'width'),
             ('length', 'circularity'),
             ('width', 'focus_GDER'),
-            ('focus_GDER', 'convexity')
+            ('focus_GDER', 'convexity'),
+            ('length', 'aspect_ratio'),
+            ('aspect_ratio', 'area')
         ]
 
         for xlbl, ylbl in plot_specs:
