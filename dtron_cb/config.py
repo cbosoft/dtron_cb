@@ -64,7 +64,7 @@ def apply_defaults(config: CfgNode) -> CfgNode:
     config.INFERENCE = CfgNode()
     config.INFERENCE.PIXEL_THRESH = 0.5
     config.INFERENCE.OVERALL_THRESH = 0.5
-    config.INFERENCE.PX_TO_UM = 1.3  # px2um for PVM
+    config.INFERENCE.PX_TO_UM = 1360/1075  # px2um for PVM
 
     return config
 
