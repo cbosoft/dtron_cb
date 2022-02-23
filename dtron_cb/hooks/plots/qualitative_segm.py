@@ -19,8 +19,8 @@ Int4 = Tuple[int, int, int, int]
 
 
 def plot_qualitative_segm(dataset: List[dict], model, rows=4, fn: str = None, w=3, px_thresh=0.5, ov_thresh=0.5, crop: Optional[Int4] = None):
-    othresh = 0.5
-    GeneralizedRCNN.mask_threshold = -1
+    original_px_thresh = px_thresh
+    model.px_thresh = -0.1
     if len(dataset) > rows:
         dataset = np.random.choice(dataset, rows)
     sz = 7
@@ -98,7 +98,8 @@ def plot_qualitative_segm(dataset: List[dict], model, rows=4, fn: str = None, w=
     else:
         plt.savefig(fn)
         plt.close()
-    GeneralizedRCNN.mask_threshold = othresh
+
+    model.px_thresh = original_px_thresh
 
 
 class QualitativeSegmHook(HookBase):
