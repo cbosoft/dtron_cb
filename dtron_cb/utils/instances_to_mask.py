@@ -31,7 +31,7 @@ def _pred_instances_to_mask(instances: Instances, *, score_thresh, mask_thresh=N
     try:
         for score, mask in zip(instances.scores, instances.pred_masks):
             if score < score_thresh: continue
-            mask_bool = mask.detach().cpu().numpy() > mask_thresh*255
+            mask_bool = mask.detach().cpu().numpy() > mask_thresh
             combined |= mask_bool
     except AttributeError:
         pass
