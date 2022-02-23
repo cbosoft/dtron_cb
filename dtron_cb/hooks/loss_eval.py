@@ -80,7 +80,7 @@ class LossEvalHook(HookBase):
         with torch.no_grad():
             try:
                 gt = instances_to_mask(data[0]['instances'])
-                pred = instances_to_mask(self._model(data)[0]['instances'], score_thresh=0.5)
+                pred = instances_to_mask(self._model(data)[0]['instances'], score_thresh=0.5, mask_thresh=self._model.px_thresh)
             except ValueError:
                 print('Failed to calculate metrics due to mask error')
                 self._model.train()
