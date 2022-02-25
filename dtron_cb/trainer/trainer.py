@@ -82,7 +82,7 @@ class Trainer(TrainerBase):
             IterationTimer(),
             LRScheduler(),
             LossEvalHook(self.config, self.model),
-            DatasetPlotHook(self.config),
+            # DatasetPlotHook(self.config),
             QualitativeSegmHook(self.config, self.model),
             MetricsPlotHook(self.config,
                             groups=dict(
