@@ -57,9 +57,10 @@ class LossEvalHook(HookBase):
             loss_batch = self._get_loss(inputs)
             losses.append(loss_batch)
             for k, v in self._get_metrics(inputs).items():
-                metrics[k].append(v)
+                if np.isfinite(v):
+                    metrics[k].append(v)
         mean_loss = np.mean(losses)
-        mean_metrics = {k: np.mean(v) for k, v in metrics.items()}
+        mean_metrics = {k: (np.mean(v) if v else np.nan) for k, v in metrics.items()}
         self.trainer.storage.put_scalars(validation_loss=mean_loss, **mean_metrics)
         comm.synchronize()
 
