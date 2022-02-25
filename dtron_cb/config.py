@@ -29,7 +29,7 @@ def apply_defaults(config: CfgNode) -> CfgNode:
     config.DATASETS.TEST = None
     config.DATASETS.TRAIN_FRACTION = 0.8
 
-    config.TEST.EVAL_PERIOD = 100
+    config.TEST.EVAL_PERIOD = -1
 
     config.CROSS_VALIDATION = CfgNode()
     config.CROSS_VALIDATION.N_FOLDS = 5
@@ -43,7 +43,7 @@ def apply_defaults(config: CfgNode) -> CfgNode:
     config.SOLVER.IMS_PER_BATCH = 4
     config.SOLVER.MAX_ITER = 5000
     config.SOLVER.WARMUP_ITERS = 500
-    config.SOLVER.CHECKPOINT_PERIOD = 500
+    config.SOLVER.CHECKPOINT_PERIOD = 1000
     config.SOLVER.STEPS = 2000, 4000, 4500
     config.SOLVER.N_EPOCHS = 100
 
@@ -72,6 +72,8 @@ def apply_defaults(config: CfgNode) -> CfgNode:
 def finalise(config: CfgNode):
 
     assert config.DATASETS.ROOT, f'"config.DATASETS.ROOT" must be specified as the dir containing COCO format .json files.'
+
+    assert config.TEST.EVAL_PERIOD < 0, 'Test eval period is ignored; eval is performed once per epoch.'
 
     assert 0.1 < config.DATASETS.TRAIN_FRACTION < 0.9
 

@@ -7,11 +7,11 @@ from collections import defaultdict
 import numpy as np
 import cv2
 
-from detectron2.engine.hooks import HookBase
 from detectron2.utils.logger import log_every_n_seconds
 from detectron2.data import DatasetMapper, build_detection_test_loader
 import detectron2.utils.comm as comm
 
+from .base import HookBase
 from ..utils.instances_to_mask import instances_to_mask
 
 
@@ -80,7 +80,7 @@ class LossEvalHook(HookBase):
         with torch.no_grad():
             try:
                 gt = instances_to_mask(data[0]['instances'])
-                pred = instances_to_mask(self._model(data)[0]['instances'], score_thresh=0.5, mask_thresh=self._model.px_thresh)
+                pred = instances_to_mask(self._model(data)[0]['instances'], score_thresh=self._model.ov_thresh)
             except ValueError:
                 print('Failed to calculate metrics due to mask error')
                 self._model.train()
@@ -111,8 +111,5 @@ class LossEvalHook(HookBase):
         self._model.train()
         return metrics
 
-    def before_step(self):
-        next_iter = self.trainer.iter + 1
-        is_final = next_iter == self.trainer.max_iter
-        if is_final or (self._period > 0 and next_iter % self._period == 0):
-            self._do_loss_eval()
+    def after_epoch(self):
+        self._do_loss_eval()
