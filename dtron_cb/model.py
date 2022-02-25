@@ -10,7 +10,16 @@ from detectron2.utils.memory import retry_if_cuda_oom
 
 
 def get_paste_func(output_height):
-    from detectron2.layers.mask_ops import paste_masks_in_image, _paste_masks_tensor_shape
+    import detectron2.layers.mask_ops as mo
+    
+    paste_masks_in_image = mo.paste_masks_in_image
+
+    # older versions of detectron don't have this function...
+    _paste_masks_tensor_shape = (
+            mo.paste_masks_in_image
+            if not hasattr(mo, '_paste_masks_tensor_shape') else
+            mo._paste_masks_tensor_shape
+        )
 
     if torch.jit.is_tracing():
         if isinstance(output_height, torch.Tensor):
