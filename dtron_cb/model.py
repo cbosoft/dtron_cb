@@ -4,17 +4,113 @@ import torch
 
 from detectron2.config import configurable
 from detectron2.structures import ImageList, Instances, ROIMasks
-from detectron2.modeling.postprocessing import detector_postprocess
 from detectron2.modeling.meta_arch.rcnn import GeneralizedRCNN
 from detectron2.modeling.meta_arch.build import META_ARCH_REGISTRY
+from detectron2.utils.memory import retry_if_cuda_oom
+
+
+def get_paste_func(output_height):
+    from detectron2.layers.mask_ops import paste_masks_in_image, _paste_masks_tensor_shape
+
+    if torch.jit.is_tracing():
+        if isinstance(output_height, torch.Tensor):
+            paste_func = _paste_masks_tensor_shape
+        else:
+            paste_func = paste_masks_in_image
+    else:
+        paste_func = retry_if_cuda_oom(paste_masks_in_image)
+
+    return paste_func
+
+
+# perhaps should rename to "resize_instance"
+def detector_postprocess(
+    results: Instances, output_height: int, output_width: int, mask_threshold: float = 0.5
+):
+    """
+
+    copy of "from detectron2.modeling.postprocessing import detector_postprocess"
+
+    Resize the output instances.
+    The input images are often resized when entering an object detector.
+    As a result, we often need the outputs of the detector in a different
+    resolution from its inputs.
+
+    This function will resize the raw outputs of an R-CNN detector
+    to produce outputs according to the desired output resolution.
+
+    Args:
+        results (Instances): the raw outputs from the detector.
+            `results.image_size` contains the input image resolution the detector sees.
+            This object might be modified in-place.
+        output_height, output_width: the desired output resolution.
+
+    Returns:
+        Instances: the resized output from the model, based on the output resolution
+    """
+    if isinstance(output_width, torch.Tensor):
+        # This shape might (but not necessarily) be tensors during tracing.
+        # Converts integer tensors to float temporaries to ensure true
+        # division is performed when computing scale_x and scale_y.
+        output_width_tmp = output_width.float()
+        output_height_tmp = output_height.float()
+        new_size = torch.stack([output_height, output_width])
+    else:
+        new_size = (output_height, output_width)
+        output_width_tmp = output_width
+        output_height_tmp = output_height
+
+    scale_x, scale_y = (
+        output_width_tmp / results.image_size[1],
+        output_height_tmp / results.image_size[0],
+    )
+    results = Instances(new_size, **results.get_fields())
+
+    if results.has("pred_boxes"):
+        output_boxes = results.pred_boxes
+    elif results.has("proposal_boxes"):
+        output_boxes = results.proposal_boxes
+    else:
+        output_boxes = None
+    assert output_boxes is not None, "Predictions must contain boxes!"
+
+    output_boxes.scale(scale_x, scale_y)
+    output_boxes.clip(results.image_size)
+
+    results = results[output_boxes.nonempty()]
+
+    if results.has("pred_masks"):
+        if isinstance(results.pred_masks, ROIMasks):
+            roi_masks = results.pred_masks
+        else:
+            # pred_masks is a tensor of shape (N, 1, M, M)
+            roi_masks = ROIMasks(results.pred_masks[:, 0, :, :])
+
+        paste_func = get_paste_func(output_height)
+
+        assert 0.0 <= mask_threshold <= 1.0, mask_threshold
+
+        results.pred_masks = roi_masks.to_bitmasks(
+            results.pred_boxes, output_height, output_width, mask_threshold
+        ).tensor
+
+        pred_prob_masks = paste_func(roi_masks.tensor, results.pred_boxes.tensor, (output_height, output_width), threshold=-1.0)
+        results.pred_prob_masks = pred_prob_masks.to(float)/255.  # convert 0-255 back to 0-1 probabilities
+
+    if results.has("pred_keypoints"):
+        results.pred_keypoints[:, :, 0] *= scale_x
+        results.pred_keypoints[:, :, 1] *= scale_y
+
+    return results
 
 
 @META_ARCH_REGISTRY.register
 class CB_GeneralizedRCNN(GeneralizedRCNN):
 
     @configurable
-    def __init__(self, px_thresh, **kwargs):
+    def __init__(self, px_thresh, ov_thresh, **kwargs):
         self.px_thresh = px_thresh
+        self.ov_thresh = ov_thresh
         super().__init__(**kwargs)
 
     @classmethod
@@ -23,6 +119,7 @@ class CB_GeneralizedRCNN(GeneralizedRCNN):
         print(d)
         return {
             'px_thresh': cfg.INFERENCE.PIXEL_THRESH,
+            'ov_thresh': cfg.INFERENCE.OVERALL_THRESH,
             **d
         }
 

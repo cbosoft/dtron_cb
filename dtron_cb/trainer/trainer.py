@@ -68,6 +68,8 @@ class Trainer(TrainerBase):
             trainer=weakref.proxy(self),
         )
 
+        print(self.model.device)
+
         self.register_hooks(self.build_hooks())
 
     @property

@@ -24,14 +24,13 @@ def _gt_instances_to_mask(instances: Instances):
     return combined
 
 
-def _pred_instances_to_mask(instances: Instances, *, score_thresh, mask_thresh):
+def _pred_instances_to_mask(instances: Instances, *, score_thresh):
     combined = np.zeros(instances.image_size, dtype=bool)
 
     try:
-        for score, mask in zip(instances.scores, instances.pred_masks):
+        for score, mask_bool in zip(instances.scores, instances.pred_masks):
             if score < score_thresh: continue
-            mask_bool = mask.detach().cpu().numpy() > mask_thresh
-            combined |= mask_bool
+            combined |= mask_bool.detach().cpu().numpy()
     except AttributeError:
         pass
 
