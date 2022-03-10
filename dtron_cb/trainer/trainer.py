@@ -164,6 +164,7 @@ class Trainer(TrainerBase):
             loss_dict = {"total_loss": loss_dict}
         else:
             losses = sum(loss_dict.values())
+            loss_dict['loss_total'] = float(losses)
 
         self.optimiser.zero_grad()
         losses.backward()
