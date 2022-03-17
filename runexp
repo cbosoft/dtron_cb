@@ -1,0 +1,20 @@
+#!/usr/bin/env python
+import argparse
+
+from dtron_cb import run
+
+
+def get_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('experiment', nargs='+', type=str, help='experiment yaml file(s) to run')
+    return parser.parse_args()
+
+
+def main():
+    args = get_args()
+    for exp in args.experiment:
+        run(exp)
+
+
+if __name__ == '__main__':
+    main()
