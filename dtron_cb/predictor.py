@@ -123,8 +123,8 @@ class Particles:
     def __init__(self, *particles):
         self.particles: List[Particle] = [*particles]
 
-    def add(self, fn: str, orig_image: np.ndarray, contour, px2um, score):
-        self.particles.append(Particle(fn, orig_image, contour, px2um, score))
+    def add(self, fn: str, orig_image: np.ndarray, contour, px2um, score, on_border_thresh):
+        self.particles.append(Particle(fn, orig_image, contour, px2um, score, on_border_thresh))
 
     def write_out(self, fn: str, comment=None):
         csv_lines = [','.join(Particle.CSV_HEADER)]
@@ -186,6 +186,7 @@ class COCOPredictor:
         self.px2um = config.INFERENCE.PX_TO_UM
         self.px_thresh = config.INFERENCE.PIXEL_THRESH
         self.overall_thresh = config.INFERENCE.OVERALL_THRESH
+        self.particle_on_border_thresh = config.INFERENCE.ON_BORDER_THRESH
 
     def predict(self):
         for ds_name in self.datasets:
@@ -253,7 +254,7 @@ class COCOPredictor:
                     maskf: np.ndarray = maskf_t.cpu().numpy()
 
                     # mask is uint mat in range 0-255, maskf is float mat in range 0-1
-                    cnt = cv2.findContours(masku, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
+                    cnt = cv2.findContours(masku, cv2.RETR_FLOODFILL, cv2.CHAIN_APPROX_SIMPLE)[0]
                     # if multiple contours are found; just take the largest
                     if len(cnt) > 1:
                         cnt = sorted(cnt, key=lambda c: cv2.contourArea(c))[-1]
@@ -261,7 +262,7 @@ class COCOPredictor:
                         cnt = cnt[0]
 
                     try:
-                        particles.add(fn, oimc, cnt, self.px2um, float(score))
+                        particles.add(fn, oimc, cnt, self.px2um, float(score), self.particle_on_border_thresh)
                         n += 1
                     except ParticleConstructionError as e:
                         print(f'Not adding particle: {e}')

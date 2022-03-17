@@ -45,11 +45,13 @@ def size_of_box(box):
 
 class Particle:
 
-    CSV_HEADER = ('image_file_name', 'width', 'length', 'aspect_ratio', 'area', 'perimeter', 'form_factor', 'circularity',
-                  'convex_area', 'convex_perimeter', 'convexity',
-                  'focus_GDER', 'confidence_score')
+    CSV_HEADER = ('image_file_name', 'width', 'length', 'aspect_ratio', 'area',
+                  'perimeter', 'form_factor', 'circularity', 'convex_area',
+                  'convex_perimeter', 'convexity', 'focus_GDER',
+                  'confidence_score', 'on_border')
 
-    def __init__(self, orig_img_fn: str, orig_image: np.ndarray, contour, px2um: float, conf_score: float):
+    def __init__(self, orig_img_fn: str, orig_image: np.ndarray, contour,
+                 px2um: float, conf_score: float, on_border_thresh: int):
 
         if len(contour) < 3:
             raise ParticleConstructionError('small contour')
@@ -61,11 +63,15 @@ class Particle:
         self.conf_score = conf_score
 
         try:
-            self.centroid = int(moments['m10']/moments['m00'])*px2um, int(moments['m01']/moments['m00'])*px2um
+            self.centroid = int(moments['m10']/moments['m00'])*px2um, \
+                int(moments['m01']/moments['m00'])*px2um
         except ZeroDivisionError:
             self.centroid = np.nan, np.nan
 
         self.area = cv2.contourArea(contour)*px2um*px2um
+        if self.area < 1:
+            raise ParticleConstructionError('zero area')
+        
         self.perimeter = cv2.arcLength(contour, True)*px2um
         convex_hull = cv2.convexHull(contour)
         self.convex_area = cv2.contourArea(convex_hull)*px2um*px2um
@@ -97,10 +103,20 @@ class Particle:
 
         # TODO focus metrics
         cutout = orig_image[y:y+h, x:x+w]
+        if any([s == 0 for s in cutout.shape]):
+            raise ParticleConstructionError('zero area')
+        
         self.focus_GDER = self.fmeasure_GDER(cutout)
+
+        ih, iw, _ = orig_image.shape
+        self.on_border = self._get_is_on_border(on_border_thresh, iw, ih)
 
     def __lt__(self, other: "Particle") -> bool:
         return self.image_file_name < other.image_file_name
+    
+    def _get_is_on_border(self, thresh: int, w: int, h: int) -> bool:
+        x, y = self.contour.squeeze().transpose()
+        return np.any(x < thresh) or np.any(x > (w - thresh)) or np.any(y < thresh) or np.any(y > (h - thresh))
 
     @staticmethod
     def fmeasure_GDER(img: np.ndarray, w_size=15):
@@ -144,7 +160,8 @@ class Particle:
             convexity=float(self.convexity),
             centroid=[float(v) for v in self.centroid],
             focus_GDER=float(self.focus_GDER),
-            confidence_score=float(self.conf_score)
+            confidence_score=float(self.conf_score),
+            on_border=self.on_border
         )
 
     @staticmethod
