@@ -56,7 +56,10 @@ def plot_qualitative_segm(dataset: List[dict], model, rows=4, fn: str = None, w=
 
         plt.sca(pred_ax)
         inp = torch.tensor(im)
-        inp = torch.permute(inp, (2, 0, 1))
+        try:
+            inp = torch.permute(inp, (2, 0, 1))
+        except:
+            inp = inp.permute((2, 0, 1))
         inst = model([dict(image=inp)])[0]['instances']
         height, width = im.shape[:2]
         composite = cv2.cvtColor(im, cv2.COLOR_RGB2BGRA).astype(float)/255
