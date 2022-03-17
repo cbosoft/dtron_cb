@@ -19,8 +19,6 @@ Int4 = Tuple[int, int, int, int]
 
 
 def plot_qualitative_segm(dataset: List[dict], model, rows=4, fn: str = None, w=3, px_thresh=0.5, ov_thresh=0.5, crop: Optional[Int4] = None):
-    othresh = 0.5
-    GeneralizedRCNN.mask_threshold = -1
     if len(dataset) > rows:
         dataset = np.random.choice(dataset, rows)
     sz = 7
@@ -65,11 +63,13 @@ def plot_qualitative_segm(dataset: List[dict], model, rows=4, fn: str = None, w=
         composite = cv2.cvtColor(im, cv2.COLOR_RGB2BGRA).astype(float)/255
         composite[:, :, -1] = 1.0
 
-        for i, (mask_t, score) in enumerate(zip(inst.pred_masks, inst.scores)):
+        for i, (masku_t, maskf_t, score) in enumerate(zip(inst.pred_masks, inst.pred_prob_masks, inst.scores)):
             score = float(score.cpu())
-            if score < ov_thresh: continue
-            mask: np.ndarray = mask_t.cpu().numpy()
-            submask = plt.cm.viridis(mask/255)
+            if score < ov_thresh:
+                continue
+            mask: np.ndarray = maskf_t.cpu().numpy()
+
+            submask = plt.cm.viridis(mask)
             submask[:, :, 3] = np.where(mask < 0.1, 0.0, 0.2)
             alpha_s = submask[:, :, 3]
             alpha_c = 1.0 - alpha_s
@@ -90,7 +90,7 @@ def plot_qualitative_segm(dataset: List[dict], model, rows=4, fn: str = None, w=
         # TODO GT_MASK
 
         plt.sca(pred_mask_ax)
-        mask = instances_to_mask(inst, score_thresh=ov_thresh, mask_thresh=px_thresh)
+        mask = instances_to_mask(inst, score_thresh=ov_thresh)
         plt.imshow(mask, cmap='gray')
 
     plt.tight_layout()
@@ -99,7 +99,6 @@ def plot_qualitative_segm(dataset: List[dict], model, rows=4, fn: str = None, w=
     else:
         plt.savefig(fn)
         plt.close()
-    GeneralizedRCNN.mask_threshold = othresh
 
 
 class QualitativeSegmHook(HookBase):

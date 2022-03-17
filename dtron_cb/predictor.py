@@ -1,11 +1,12 @@
 import os
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 import json
 
 import cv2
 import torch
 from tqdm import tqdm
 import numpy as np
+from matplotlib import pyplot as plt
 
 from detectron2.data import DatasetCatalog, MetadataCatalog
 from detectron2.modeling import build_model
@@ -14,7 +15,7 @@ from detectron2.checkpoint import DetectionCheckpointer
 from .utils.today import today
 from .utils.ensure_dir import ensure_dir
 from .config import CfgNode
-from .particle import Particle
+from .particle import Particle, ParticleConstructionError
 
 
 Int4 = Tuple[int, int, int, int]
@@ -119,22 +120,49 @@ class COCO_Dataset:
 
 class Particles:
 
-    def __init__(self):
-        self.particles: List[Particle] = []
+    def __init__(self, *particles):
+        self.particles: List[Particle] = [*particles]
 
-    def add(self, image: np.array, contour, px2um):
-        self.particles.append(Particle(image, contour, px2um))
+    def add(self, fn: str, orig_image: np.ndarray, contour, px2um, score):
+        self.particles.append(Particle(fn, orig_image, contour, px2um, score))
 
     def write_out(self, fn: str, comment=None):
         csv_lines = [','.join(Particle.CSV_HEADER)]
         if comment:
             csv_lines.insert(0, '# ' + comment)
-        for particle in self.particles:
+        for particle in sorted(self.particles):
             csv_lines.append(particle.to_csv_line())
 
         with open(fn, 'w') as f:
             for line in csv_lines:
                 f.write(f'{line}\n')
+
+    def split_by_dir(self) -> Dict[str, "Particles"]:
+        by_dir = dict()
+        for p in self.particles:
+            fn = p.image_file_name
+            dn = os.path.dirname(fn)
+            if dn not in by_dir:
+                by_dir[dn] = list()
+            by_dir[dn].append(p)
+
+        return {k: Particles(*sorted(v)) for k, v in by_dir.items()}
+
+    def split_by_fn_chunks(self, fnss: List[str]):
+        chunks = [list() for _ in fnss]
+        for i, fns in enumerate(fnss):
+            for p in self.particles:
+                if p.image_file_name in fns:
+                    chunks[i].append(p)
+        return chunks
+
+    def to_dict(self) -> Dict[str, list]:
+        values = {k: list() for k in Particle.CSV_HEADER}
+        for p in self.particles:
+            d = p.to_dict()
+            for k in Particle.CSV_HEADER:
+                values[k].append(d[k])
+        return values
 
 
 class COCOPredictor:
@@ -155,6 +183,9 @@ class COCOPredictor:
         self.datasets_root = config.DATASETS.ROOT
 
         self.crop = config.DATA.CROP
+        self.px2um = config.INFERENCE.PX_TO_UM
+        self.px_thresh = config.INFERENCE.PIXEL_THRESH
+        self.overall_thresh = config.INFERENCE.OVERALL_THRESH
 
     def predict(self):
         for ds_name in self.datasets:
@@ -173,86 +204,176 @@ class COCOPredictor:
 
         particles = Particles()
 
-        for d in tqdm(ds):
-            d = dict(**d)
-            fn = d['file_name']
-            del d['file_name']
+        with torch.no_grad():
+            for d in tqdm(ds):
+                d = dict(**d)
+                fn = d['file_name']
+                del d['file_name']
 
-            imdata = Image(file_name=os.path.relpath(fn, self.datasets_root), **d)
-            annotated_dataset.images.append(imdata)
+                imdata = Image(file_name=os.path.relpath(fn, self.datasets_root), **d)
+                annotated_dataset.images.append(imdata)
 
-            oim = cv2.imread(fn)
-            oimc = oim.copy()
-            n = 0
+                oim = cv2.imread(fn)
+                oimc = oim.copy()
+                n = 0
 
-            if self.crop:
-                x1, y1, x2, y2 = self.crop
-                oim = oim[y1:y2, x1:x2]
+                if self.crop:
+                    x1, y1, x2, y2 = self.crop
+                    oim = oim[y1:y2, x1:x2]
 
-            im_ident = fn.replace('/', '-').replace('\\', '-')
-            # im = cv2.resize(im, (512, 512))
-            # im = torch.as_tensor(oim.astype('float32').transpose(2, 0, 1))
-            im = torch.as_tensor(oim.astype('float32')); im = im.permute((2, 0, 1))
-            inputs = [dict(image=im)]
-            instances = self.model.inference(inputs, do_postprocess=True)[0]['instances']
+                im_ident = fn.replace('/', '-').replace('\\', '-')[:-4]
+                # im = cv2.resize(im, (512, 512))
+                # im = torch.as_tensor(oim.astype('float32').transpose(2, 0, 1))
+                im = torch.as_tensor(oim.astype('float32')); im = im.permute((2, 0, 1))
+                inputs = [dict(image=im)]
+                instances = self.model.inference(inputs, do_postprocess=True)[0]['instances']
 
-            try:
-                scores = instances.scores
-                bboxes = instances.pred_boxes
-                cats = instances.pred_classes
-                masks = instances.pred_masks
-            except AttributeError:
-                print(list(instances.get_fields().keys()))
-                raise
-            for score, bbox, cat, mask in zip(scores, bboxes, cats, masks):
-                if score < 0.95:
-                    continue
+                try:
+                    scores = instances.scores
+                    bboxes = instances.pred_boxes
+                    cats = instances.pred_classes
+                    masks = instances.pred_masks
+                    mask_probs = instances.pred_prob_masks
+                except AttributeError:
+                    print(list(instances.get_fields().keys()))
+                    raise
 
-                x1, y1, x2, y2 = bbox
-                bbox = x, y, w, h = int(x1), int(y1), int(x2-x1), int(y2-y1)
-                area = w*h
-                mask = (mask.cpu().numpy()*255).astype(np.uint8)
-                cnt = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
-                # if multiple contours are found; just take the largest
-                if len(cnt) > 1:
-                    cnt = sorted(cnt, key=lambda c: cv2.contourArea(c))[-1]
-                else:
-                    cnt = cnt[0]
-                cnt = cv2.convexHull(cnt)
-                npoints = len(cnt)
-                fac = int(npoints / self.MAX_N_POLYGON)
-                if fac > 1:
-                    # extra array constructor is required, opencv is funny about contours
-                    cnt = np.array(cnt[::fac], dtype=np.int32)
+                composite = cv2.cvtColor(oim, cv2.COLOR_BGR2RGB)
+                for i, (maskb_t, maskf_t, score, bbox, cat) in enumerate(zip(masks, mask_probs, scores, bboxes, cats)):
 
-                cv2.drawContours(oimc, [cnt], 0, (0, 255, 255), 2)
-                n += 1
+                    x1, y1, x2, y2 = bbox.detach().cpu().numpy().astype(int)  # converts to numpy int32
+                    # conert to plain int or json serialiser will complain
+                    bbox = x, y, w, h = int(x1), int(y1), int(x2 - x1), int(y2 - y1)
+                    area = w*h
+                    score = float(score.cpu())
+                    if score < self.overall_thresh:
+                        continue
 
-                particles.add(oimc, cnt[0], 1)  # TODO get px2um
+                    masku: np.ndarray = maskb_t.cpu().numpy()*255
+                    maskf: np.ndarray = maskf_t.cpu().numpy()
 
-                # convert [[[x, y]], ... ] format to [x, y, x, y, ...]
-                cnt = np.array(cnt)
-                cnt = cnt.squeeze()
-                seg = np.zeros(cnt.size)
-                seg[::2] = cnt[:, 0]
-                seg[1::2] = cnt[:, 1]
-                seg = [[int(s) for s in seg]]
+                    # mask is uint mat in range 0-255, maskf is float mat in range 0-1
+                    cnt = cv2.findContours(masku, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
+                    # if multiple contours are found; just take the largest
+                    if len(cnt) > 1:
+                        cnt = sorted(cnt, key=lambda c: cv2.contourArea(c))[-1]
+                    else:
+                        cnt = cnt[0]
 
-                anndata = Annotation(
-                    idx=len(annotated_dataset.annotations),
-                    image_idx=int(imdata.idx),
-                    category_idx=cid2did[int(cat)],
-                    bbox=bbox,
-                    segmentation=seg,
-                    area=area
-                )
-                annotated_dataset.annotations.append(anndata)
+                    try:
+                        particles.add(fn, oimc, cnt, self.px2um, float(score))
+                        n += 1
+                    except ParticleConstructionError as e:
+                        print(f'Not adding particle: {e}')
+                        continue
 
-            # write out segmented image
-            cv2.imwrite(f'{self.images_dir}/n={n}_{im_ident}', oimc)
+                    # c = [ci*255 for ci in plt.cm.viridis(score)[:3]]
+                    # cv2.drawContours(composite, [cnt], 0, c, 2)
+
+                    # Draw bounding box
+                    bbox_contour = np.array([[x1, y1], [x2, y1], [x2, y2], [x1, y2], [x1, y1]])
+                    c = [ci*255 for ci in plt.cm.viridis(score)[:3]]
+                    cv2.drawContours(composite, [bbox_contour], 0, c, 2)
+
+                    # convert [[[x, y]], ... ] format to [x, y, x, y, ...]
+                    cnt = np.array(cnt)
+                    cnt = cnt.squeeze()
+                    seg = np.zeros(cnt.size)
+                    seg[::2] = cnt[:, 0]
+                    seg[1::2] = cnt[:, 1]
+                    seg = [[int(s) for s in seg]]
+
+                    anndata = Annotation(
+                        idx=len(annotated_dataset.annotations),
+                        image_idx=int(imdata.idx),
+                        category_idx=cid2did[int(cat)],
+                        bbox=bbox,
+                        segmentation=seg,
+                        area=area
+                    )
+                    annotated_dataset.annotations.append(anndata)
+
+                    # Draw pixel probabilities
+                    submask = (plt.cm.viridis(maskf)*255).astype(np.uint8)
+                    alpha_s = np.where(masku < 5, 0.0, 0.3)
+                    alpha_c = 1.0 - alpha_s
+                    for c in range(3):
+                        composite[:, :, c] = submask[:, :, c] * alpha_s + composite[:, :, c] * alpha_c
+
+                composite = cv2.cvtColor(composite, cv2.COLOR_BGR2RGB)
+                cv2.imwrite(f'{self.images_dir}/{im_ident}_n={n}.png', composite)
 
         annotated_dataset.write_out(f'{self.output_dir}/annot_{today()}_{ds_name}.json')
 
         particles.write_out(f'{self.output_dir}/particles.csv', comment='lengths are in pixels')
 
+        self.plot_particles(particles)
+
+        particles_by_dir = particles.split_by_dir()
+        for dn, ps in particles_by_dir.items():
+            self.plot_n_particles_dynamic(ps, dn.replace('/', '-').replace('\\', '-'))
+
         print(len(annotated_dataset.annotations))
+
+    def plot_particles(self, particles, tag=''):
+        if isinstance(particles, Particles):
+            particles = particles.particles
+        keys = Particle.CSV_HEADER
+        dicts = [p.to_dict() for p in particles]
+        values = {k: [d[k] for d in dicts] for k in keys}
+        plot_specs = [
+            ('length', 'width'),
+            ('length', 'circularity'),
+            ('width', 'focus_GDER'),
+            ('focus_GDER', 'convexity'),
+            ('length', 'aspect_ratio'),
+            ('aspect_ratio', 'area')
+        ]
+
+        for xlbl, ylbl in plot_specs:
+            x = values[xlbl]
+            y = values[ylbl]
+            xunit = Particle.unit_of(xlbl)
+            yunit = Particle.unit_of(ylbl)
+            plt.figure()
+            plt.plot(x, y, 'o', alpha=0.5)
+            plt.xlabel(f'{xlbl} [{xunit}]')
+            plt.ylabel(f'{ylbl} [{yunit}]')
+            plt.tight_layout()
+            plt.savefig(f'{self.output_dir}/fig_{ylbl}_v_{xlbl}{tag}.pdf')
+            plt.close()
+
+    def get_fn_chunks(self):
+        fns = []
+        for dsname in self.datasets:
+            fns.extend([d['file_name'] for d in DatasetCatalog.get(dsname)])
+        fns = sorted(fns)
+
+        w = 20
+        fn_chunks = [fns[i:i+w] for i in range(0, len(fns), w)]
+        return fn_chunks
+
+    def plot_n_particles_dynamic(self, particles, tag):
+        chunks = self.get_fn_chunks()
+        particless = particles.split_by_fn_chunks(chunks)
+
+        x = np.arange(len(chunks))
+        y = np.zeros_like(x)
+        for i, particles in enumerate(particless):
+            y[i] = len(particles)
+
+        xtl = ['...'+c[0][-10:] for c in chunks]
+        xt = x
+
+        max_ticks = 10
+        if len(x) > max_ticks:
+            xt = xt[::len(x)//max_ticks]
+            xtl = xtl[::len(x)//max_ticks]
+
+        plt.figure()
+        plt.plot(x, y)
+        plt.xticks(xt, xtl, rotation=45, ha='right')
+        plt.ylabel('Particle count')
+        plt.tight_layout()
+        plt.savefig(f'{self.output_dir}/fig_particle_count{tag}.pdf')
+        plt.close()

@@ -68,6 +68,8 @@ class Trainer(TrainerBase):
             trainer=weakref.proxy(self),
         )
 
+        print(self.model.device)
+
         self.register_hooks(self.build_hooks())
 
     @property
@@ -80,7 +82,7 @@ class Trainer(TrainerBase):
             IterationTimer(),
             LRScheduler(),
             LossEvalHook(self.config, self.model),
-            DatasetPlotHook(self.config),
+            # DatasetPlotHook(self.config),
             QualitativeSegmHook(self.config, self.model),
             MetricsPlotHook(self.config,
                             groups=dict(
@@ -162,6 +164,7 @@ class Trainer(TrainerBase):
             loss_dict = {"total_loss": loss_dict}
         else:
             losses = sum(loss_dict.values())
+            loss_dict['loss_total'] = float(losses)
 
         self.optimiser.zero_grad()
         losses.backward()

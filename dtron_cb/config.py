@@ -29,7 +29,7 @@ def apply_defaults(config: CfgNode) -> CfgNode:
     config.DATASETS.TEST = None
     config.DATASETS.TRAIN_FRACTION = 0.8
 
-    config.TEST.EVAL_PERIOD = 100
+    config.TEST.EVAL_PERIOD = -1
 
     config.CROSS_VALIDATION = CfgNode()
     config.CROSS_VALIDATION.N_FOLDS = 5
@@ -38,11 +38,12 @@ def apply_defaults(config: CfgNode) -> CfgNode:
     config.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 512
     config.MODEL.ROI_HEADS.NUM_CLASSES = 1
     config.MODEL.DEVICE = 'cuda' if is_cuda_available() else 'cpu'
+    config.MODEL.META_ARCHITECTURE = 'CB_GeneralizedRCNN'
 
     config.SOLVER.IMS_PER_BATCH = 4
     config.SOLVER.MAX_ITER = 5000
     config.SOLVER.WARMUP_ITERS = 500
-    config.SOLVER.CHECKPOINT_PERIOD = 500
+    config.SOLVER.CHECKPOINT_PERIOD = 1000
     config.SOLVER.STEPS = 2000, 4000, 4500
     config.SOLVER.N_EPOCHS = 100
 
@@ -63,6 +64,7 @@ def apply_defaults(config: CfgNode) -> CfgNode:
     config.INFERENCE = CfgNode()
     config.INFERENCE.PIXEL_THRESH = 0.5
     config.INFERENCE.OVERALL_THRESH = 0.5
+    config.INFERENCE.PX_TO_UM = 1075/1360  # px2um (um/px) for PVM
 
     return config
 
@@ -71,7 +73,12 @@ def finalise(config: CfgNode):
 
     assert config.DATASETS.ROOT, f'"config.DATASETS.ROOT" must be specified as the dir containing COCO format .json files.'
 
+    assert config.TEST.EVAL_PERIOD < 0, 'Test eval period is ignored; eval is performed once per epoch.'
+
     assert 0.1 < config.DATASETS.TRAIN_FRACTION < 0.9
+
+    assert 0.0 <= config.INFERENCE.PIXEL_THRESH <= 1.0, 'Pixel threshold should be between 0.0 and 1.0. Probabilities are now always calculated, you don\'t need to change the threshold.'
+    assert 0.0 <= config.INFERENCE.OVERALL_THRESH <= 1.0, 'Overall threshold should be between 0.0 and 1.0.'
 
     assert config.EXPERIMENTS_META.ROOT, f'"config.EXPERIMENTS_META.ROOT" must be set with a location to store experiment information while running.'
     config.OUTPUT_DIR = ensure_dir(f'{config.EXPERIMENTS_META.ROOT}/{today()}_{config.ACTION}')

@@ -33,7 +33,7 @@ def metrics_plot(metrics_json_path: str, outfn: str = None,
                  x_kind: LabelsByPattern = None):
     data = read_metrics_json(metrics_json_path)
     metrics = defaultdict(list)
-    x_kind = x_kind if x_kind else LabelsByPattern
+    x_kind = x_kind if x_kind else LabelsByPattern({})
     for i, d in enumerate(data):
         for k in d:
             if k not in ('iteration', 'train_batch', 'test_batch'):
