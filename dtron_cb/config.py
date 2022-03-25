@@ -1,6 +1,8 @@
 from typing import List
 import yaml
 import random
+from glob import glob
+import os
 
 import torch
 import numpy as np
@@ -87,6 +89,13 @@ def finalise(config: CfgNode):
 
     if config.EXPERIMENTS_META.SHOULD_COPY_ROOT:
         ensure_dir(config.EXPERIMENTS_META.FINAL_ROOT)
+
+    if config.DATASETS.PATTERN is not None:
+        config.DATASETS.NAMES = [
+            os.path.basename(d).replace(".json", "")
+            for d in glob(os.path.join(config.DATASETS.ROOT, config.DATASETS.PATTERN))
+        ]
+        print(config.DATASETS.NAMES)
 
     if isinstance(config.DATASETS.NAMES, str):
         config.DATASETS.NAMES = [config.DATASETS.NAMES]
