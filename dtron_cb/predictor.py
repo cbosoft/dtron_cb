@@ -187,6 +187,7 @@ class COCOPredictor:
         self.px_thresh = config.INFERENCE.PIXEL_THRESH
         self.overall_thresh = config.INFERENCE.OVERALL_THRESH
         self.particle_on_border_thresh = config.INFERENCE.ON_BORDER_THRESH
+        self.plot_segmentation = config.INFERENCE.PLOT_SEGM
 
     def predict(self):
         for ds_name in self.datasets:
@@ -301,8 +302,9 @@ class COCOPredictor:
                     for c in range(3):
                         composite[:, :, c] = submask[:, :, c] * alpha_s + composite[:, :, c] * alpha_c
 
+                if self.plot_segmentation:
                 composite = cv2.cvtColor(composite, cv2.COLOR_BGR2RGB)
-                cv2.imwrite(f'{self.images_dir}/{im_ident}_n={n}.png', composite)
+                    cv2.imwrite(f"{self.images_dir}/{im_ident}_n={n}.png", composite)
 
         annotated_dataset.write_out(f'{self.output_dir}/annot_{today()}_{ds_name}.json')
 
