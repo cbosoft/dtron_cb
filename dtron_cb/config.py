@@ -23,9 +23,10 @@ def get_config() -> CfgNode:
 
 def apply_defaults(config: CfgNode) -> CfgNode:
 
-    config.ACTION = 'train'  # one of 'train', 'predict', or 'cross_validate'
+    config.ACTION = "train"  # one of 'train', 'predict', or 'cross_validate'
     config.PARENT = None
-    config.DATASETS.ROOT = '/media/raid/cboyle/datasets'
+    config.DATASETS.ROOT = "/media/raid/cboyle/datasets"
+    config.DATASETS.PATTERN = None
     config.DATASETS.NAMES = None
     config.DATASETS.TRAIN = None
     config.DATASETS.TEST = None
@@ -39,8 +40,8 @@ def apply_defaults(config: CfgNode) -> CfgNode:
     config.DATALOADER.NUM_WORKERS = 4
     config.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 512
     config.MODEL.ROI_HEADS.NUM_CLASSES = 1
-    config.MODEL.DEVICE = 'cuda' if is_cuda_available() else 'cpu'
-    config.MODEL.META_ARCHITECTURE = 'CB_GeneralizedRCNN'
+    config.MODEL.DEVICE = "cuda" if is_cuda_available() else "cpu"
+    config.MODEL.META_ARCHITECTURE = "CB_GeneralizedRCNN"
 
     config.SOLVER.IMS_PER_BATCH = 4
     config.SOLVER.MAX_ITER = 5000
@@ -56,36 +57,51 @@ def apply_defaults(config: CfgNode) -> CfgNode:
 
     config.DATA = CfgNode()
     config.DATA.AUGMENTATIONS = [
-        'T.ResizeShortestEdge(short_edge_length=[640, 672, 704, 736, 768, 800], max_size=1333, sample_style=\'choice\')',
-        'T.RandomFlip()',
-        'T.RandomBrightness(0.9, 1.1)',
-        'T.RandomContrast(0.9, 1.1)'
+        "T.ResizeShortestEdge(short_edge_length=[640, 672, 704, 736, 768, 800], max_size=1333, sample_style='choice')",
+        "T.RandomFlip()",
+        "T.RandomBrightness(0.9, 1.1)",
+        "T.RandomContrast(0.9, 1.1)",
     ]
     config.DATA.CROP = None
 
     config.INFERENCE = CfgNode()
     config.INFERENCE.PIXEL_THRESH = 0.5
     config.INFERENCE.OVERALL_THRESH = 0.5
-    config.INFERENCE.PX_TO_UM = 1075/1360  # px2um (um/px) for PVM
-    config.INFERENCE.ON_BORDER_THRESH = 5 # pixels
+    config.INFERENCE.PX_TO_UM = 1075 / 1360  # px2um (um/px) for PVM
+    config.INFERENCE.ON_BORDER_THRESH = 5  # pixels
+    config.INFERENCE.PLOT_SEGM = True
 
     return config
 
 
 def finalise(config: CfgNode):
 
-    assert config.DATASETS.ROOT, f'"config.DATASETS.ROOT" must be specified as the dir containing COCO format .json files.'
+    assert (
+        config.DATASETS.ROOT
+    ), f'"config.DATASETS.ROOT" must be specified as the dir containing COCO format .json files.'
 
-    assert config.TEST.EVAL_PERIOD < 0, 'Test eval period is ignored; eval is performed once per epoch.'
+    assert (
+        config.TEST.EVAL_PERIOD < 0
+    ), "Test eval period is ignored; eval is performed once per epoch."
 
     assert 0.1 < config.DATASETS.TRAIN_FRACTION < 0.9
 
-    assert 0.0 < config.INFERENCE.PIXEL_THRESH <= 1.0, 'Pixel threshold should be between 0.0 and 1.0. Probabilities are now always calculated, you don\'t need to change the threshold.'
-    assert 0.0 < config.INFERENCE.OVERALL_THRESH <= 1.0, 'Overall threshold should be between 0.0 and 1.0.'
+    assert (
+        0.0 < config.INFERENCE.PIXEL_THRESH <= 1.0
+    ), "Pixel threshold should be between 0.0 and 1.0. Probabilities are now always calculated, you don't need to change the threshold."
+    assert (
+        0.0 < config.INFERENCE.OVERALL_THRESH <= 1.0
+    ), "Overall threshold should be between 0.0 and 1.0."
 
-    assert config.EXPERIMENTS_META.ROOT, f'"config.EXPERIMENTS_META.ROOT" must be set with a location to store experiment information while running.'
-    config.OUTPUT_DIR = ensure_dir(f'{config.EXPERIMENTS_META.ROOT}/{today()}_{config.ACTION}')
-    config.EXPERIMENTS_META.SHOULD_COPY_ROOT = config.EXPERIMENTS_META.FINAL_ROOT is not None
+    assert (
+        config.EXPERIMENTS_META.ROOT
+    ), f'"config.EXPERIMENTS_META.ROOT" must be set with a location to store experiment information while running.'
+    config.OUTPUT_DIR = ensure_dir(
+        f"{config.EXPERIMENTS_META.ROOT}/{today()}_{config.ACTION}"
+    )
+    config.EXPERIMENTS_META.SHOULD_COPY_ROOT = (
+        config.EXPERIMENTS_META.FINAL_ROOT is not None
+    )
 
     if config.EXPERIMENTS_META.SHOULD_COPY_ROOT:
         ensure_dir(config.EXPERIMENTS_META.FINAL_ROOT)
@@ -100,10 +116,10 @@ def finalise(config: CfgNode):
     if isinstance(config.DATASETS.NAMES, str):
         config.DATASETS.NAMES = [config.DATASETS.NAMES]
 
-    if config.ACTION in ('train', 'cross_validate'):
+    if config.ACTION in ("train", "cross_validate"):
         if not config.DATASETS.TRAIN:
-            config.DATASETS.TRAIN = tuple([f'{n}_train' for n in config.DATASETS.NAMES])
-            config.DATASETS.TEST = tuple([f'{n}_test' for n in config.DATASETS.NAMES])
+            config.DATASETS.TRAIN = tuple([f"{n}_train" for n in config.DATASETS.NAMES])
+            config.DATASETS.TEST = tuple([f"{n}_test" for n in config.DATASETS.NAMES])
 
     if config.SEED is None or config.SEED < 0:
         config.SEED = random.randint(0, 1_000_000)
@@ -120,7 +136,7 @@ def finalise(config: CfgNode):
 
 def get_config_parents(filename: str) -> List[str]:
 
-    if filename.startswith('zoo:'):
+    if filename.startswith("zoo:"):
         filename = get_zoo_config(filename[4:])
 
     with open(filename) as f:
@@ -128,8 +144,8 @@ def get_config_parents(filename: str) -> List[str]:
 
     data = yaml.safe_load(yamlstr)
 
-    if data is not None and 'PARENT' in data and data['PARENT']:
-        parent = data['PARENT']
+    if data is not None and "PARENT" in data and data["PARENT"]:
+        parent = data["PARENT"]
         return [*get_config_parents(parent), parent]
     else:
         return []
@@ -141,8 +157,8 @@ def read_config_file(filename: str):
 
     to_merge = [*get_config_parents(filename), filename]
     for i, fn in enumerate(to_merge):
-        if fn.startswith('zoo:'):
-            assert i == 0, 'Only top level can inherit from zoo.'
+        if fn.startswith("zoo:"):
+            assert i == 0, "Only top level can inherit from zoo."
             fn = get_zoo_config(fn[4:])
             config.merge_from_file(fn)
             apply_defaults(config)

@@ -22,8 +22,15 @@ Int4 = Tuple[int, int, int, int]
 
 
 class Annotation:
-
-    def __init__(self, idx: int, image_idx: int, category_idx: int, bbox: Int4, segmentation: List[List[float]], area: float):
+    def __init__(
+        self,
+        idx: int,
+        image_idx: int,
+        category_idx: int,
+        bbox: Int4,
+        segmentation: List[List[float]],
+        area: float,
+    ):
         self.idx = idx
         self.image_idx = image_idx
         self.category_idx = category_idx
@@ -39,14 +46,21 @@ class Annotation:
             bbox=self.bbox,
             segmentation=self.segmentation,
             area=self.area,
-            iscrowd=0
+            iscrowd=0,
         )
 
 
 class Image:
-
-    def __init__(self, image_id: int, file_name: str, height: int, width: int, license_idx=0, date_captured='n/a',
-                 **kwargs):
+    def __init__(
+        self,
+        image_id: int,
+        file_name: str,
+        height: int,
+        width: int,
+        license_idx=0,
+        date_captured="n/a",
+        **kwargs,
+    ):
         self.idx = image_id
         self.license_idx = license_idx
         self.file_name = file_name
@@ -62,12 +76,11 @@ class Image:
             file_name=self.file_name,
             height=self.height,
             width=self.width,
-            date_captured=self.date_captured
+            date_captured=self.date_captured,
         )
 
 
 class License:
-
     def __init__(self, url: str, idx: int, name: str):
         self.url = url
         self.idx = idx
@@ -78,23 +91,32 @@ class License:
 
 
 class Category:
-
     def __init__(self, idx: int, name: str):
         self.idx = idx
         self.name = name
 
     def dict(self) -> dict:
-        return dict(
-            id=self.idx,
-            name=self.name
-        )
+        return dict(id=self.idx, name=self.name)
 
 
 class COCO_Dataset:
-
-    def __init__(self, year='n/a', version='n/a', description='n/a', contributor='n/a', url='n/a', date_created=None):
-        self.info = dict(year=year, version=version, description=description,
-                         contributor=contributor, url=url, date_created=date_created)
+    def __init__(
+        self,
+        year="n/a",
+        version="n/a",
+        description="n/a",
+        contributor="n/a",
+        url="n/a",
+        date_created=None,
+    ):
+        self.info = dict(
+            year=year,
+            version=version,
+            description=description,
+            contributor=contributor,
+            url=url,
+            date_created=date_created,
+        )
         self.licenses: List[License] = self.get_default_licenses()
         self.images: List[Image] = []
         self.annotations: List[Annotation] = []
@@ -102,7 +124,7 @@ class COCO_Dataset:
 
     @staticmethod
     def get_default_licenses() -> List[License]:
-        return [License('n/a', 0, 'CMAC internal use only')]
+        return [License("n/a", 0, "CMAC internal use only")]
 
     def write_out(self, fn: str):
 
@@ -111,31 +133,34 @@ class COCO_Dataset:
             licenses=[l.dict() for l in self.licenses],
             images=[i.dict() for i in self.images],
             annotations=[a.dict() for a in self.annotations],
-            categories=[c.dict() for c in self.categories]
+            categories=[c.dict() for c in self.categories],
         )
 
-        with open(fn, 'w') as f:
+        with open(fn, "w") as f:
             json.dump(data_dict, f)
 
 
 class Particles:
-
     def __init__(self, *particles):
         self.particles: List[Particle] = [*particles]
 
-    def add(self, fn: str, orig_image: np.ndarray, contour, px2um, score, on_border_thresh):
-        self.particles.append(Particle(fn, orig_image, contour, px2um, score, on_border_thresh))
+    def add(
+        self, fn: str, orig_image: np.ndarray, contour, px2um, score, on_border_thresh
+    ):
+        self.particles.append(
+            Particle(fn, orig_image, contour, px2um, score, on_border_thresh)
+        )
 
     def write_out(self, fn: str, comment=None):
-        csv_lines = [','.join(Particle.CSV_HEADER)]
+        csv_lines = [",".join(Particle.CSV_HEADER)]
         if comment:
-            csv_lines.insert(0, '# ' + comment)
+            csv_lines.insert(0, "# " + comment)
         for particle in sorted(self.particles):
             csv_lines.append(particle.to_csv_line())
 
-        with open(fn, 'w') as f:
+        with open(fn, "w") as f:
             for line in csv_lines:
-                f.write(f'{line}\n')
+                f.write(f"{line}\n")
 
     def split_by_dir(self) -> Dict[str, "Particles"]:
         by_dir = dict()
@@ -171,7 +196,7 @@ class COCOPredictor:
 
     def __init__(self, config: CfgNode):
         self.output_dir = config.OUTPUT_DIR
-        self.images_dir = ensure_dir(f'{self.output_dir}/segmented_images')
+        self.images_dir = ensure_dir(f"{self.output_dir}/segmented_images")
 
         self.model = build_model(config)
         self.model.eval()
@@ -198,9 +223,9 @@ class COCOPredictor:
         md = MetadataCatalog.get(ds_name)
 
         annotated_dataset = COCO_Dataset()
-        did2cid = md.get('thing_dataset_id_to_contiguous_id')
+        did2cid = md.get("thing_dataset_id_to_contiguous_id")
         cid2did = {v: k for k, v in did2cid.items()}
-        for cid, cat in enumerate(md.get('thing_classes')):
+        for cid, cat in enumerate(md.get("thing_classes")):
             did = cid2did[cid]
             annotated_dataset.categories.append(Category(did, cat))
 
@@ -209,8 +234,8 @@ class COCOPredictor:
         with torch.no_grad():
             for d in tqdm(ds):
                 d = dict(**d)
-                fn = d['file_name']
-                del d['file_name']
+                fn = d["file_name"]
+                del d["file_name"]
 
                 imdata = Image(file_name=os.path.relpath(fn, self.datasets_root), **d)
                 annotated_dataset.images.append(imdata)
@@ -223,12 +248,15 @@ class COCOPredictor:
                     x1, y1, x2, y2 = self.crop
                     oim = oim[y1:y2, x1:x2]
 
-                im_ident = fn.replace('/', '-').replace('\\', '-')[:-4]
+                im_ident = fn.replace("/", "-").replace("\\", "-")[:-4]
                 # im = cv2.resize(im, (512, 512))
                 # im = torch.as_tensor(oim.astype('float32').transpose(2, 0, 1))
-                im = torch.as_tensor(oim.astype('float32')); im = im.permute((2, 0, 1))
+                im = torch.as_tensor(oim.astype("float32"))
+                im = im.permute((2, 0, 1))
                 inputs = [dict(image=im)]
-                instances = self.model.inference(inputs, do_postprocess=True)[0]['instances']
+                instances = self.model.inference(inputs, do_postprocess=True)[0][
+                    "instances"
+                ]
 
                 try:
                     scores = instances.scores
@@ -241,21 +269,27 @@ class COCOPredictor:
                     raise
 
                 composite = cv2.cvtColor(oim, cv2.COLOR_BGR2RGB)
-                for i, (maskb_t, maskf_t, score, bbox, cat) in enumerate(zip(masks, mask_probs, scores, bboxes, cats)):
+                for i, (maskb_t, maskf_t, score, bbox, cat) in enumerate(
+                    zip(masks, mask_probs, scores, bboxes, cats)
+                ):
 
-                    x1, y1, x2, y2 = bbox.detach().cpu().numpy().astype(int)  # converts to numpy int32
+                    x1, y1, x2, y2 = (
+                        bbox.detach().cpu().numpy().astype(int)
+                    )  # converts to numpy int32
                     # conert to plain int or json serialiser will complain
                     bbox = x, y, w, h = int(x1), int(y1), int(x2 - x1), int(y2 - y1)
-                    area = w*h
+                    area = w * h
                     score = float(score.cpu())
                     if score < self.overall_thresh:
                         continue
 
-                    masku: np.ndarray = maskb_t.cpu().numpy()*255
+                    masku: np.ndarray = maskb_t.cpu().numpy() * 255
                     maskf: np.ndarray = maskf_t.cpu().numpy()
 
                     # mask is uint mat in range 0-255, maskf is float mat in range 0-1
-                    cnt = cv2.findContours(masku, cv2.RETR_FLOODFILL, cv2.CHAIN_APPROX_SIMPLE)[0]
+                    cnt = cv2.findContours(
+                        masku, cv2.RETR_FLOODFILL, cv2.CHAIN_APPROX_SIMPLE
+                    )[0]
                     # if multiple contours are found; just take the largest
                     if len(cnt) > 1:
                         cnt = sorted(cnt, key=lambda c: cv2.contourArea(c))[-1]
@@ -263,18 +297,27 @@ class COCOPredictor:
                         cnt = cnt[0]
 
                     try:
-                        particles.add(fn, oimc, cnt, self.px2um, float(score), self.particle_on_border_thresh)
+                        particles.add(
+                            fn,
+                            oimc,
+                            cnt,
+                            self.px2um,
+                            float(score),
+                            self.particle_on_border_thresh,
+                        )
                         n += 1
                     except ParticleConstructionError as e:
-                        print(f'Not adding particle: {e}')
+                        print(f"Not adding particle: {e}")
                         continue
 
                     # c = [ci*255 for ci in plt.cm.viridis(score)[:3]]
                     # cv2.drawContours(composite, [cnt], 0, c, 2)
 
                     # Draw bounding box
-                    bbox_contour = np.array([[x1, y1], [x2, y1], [x2, y2], [x1, y2], [x1, y1]])
-                    c = [ci*255 for ci in plt.cm.viridis(score)[:3]]
+                    bbox_contour = np.array(
+                        [[x1, y1], [x2, y1], [x2, y2], [x1, y2], [x1, y1]]
+                    )
+                    c = [ci * 255 for ci in plt.cm.viridis(score)[:3]]
                     cv2.drawContours(composite, [bbox_contour], 0, c, 2)
 
                     # convert [[[x, y]], ... ] format to [x, y, x, y, ...]
@@ -291,46 +334,51 @@ class COCOPredictor:
                         category_idx=cid2did[int(cat)],
                         bbox=bbox,
                         segmentation=seg,
-                        area=area
+                        area=area,
                     )
                     annotated_dataset.annotations.append(anndata)
 
                     # Draw pixel probabilities
-                    submask = (plt.cm.viridis(maskf)*255).astype(np.uint8)
+                    submask = (plt.cm.viridis(maskf) * 255).astype(np.uint8)
                     alpha_s = np.where(masku < 5, 0.0, 0.3)
                     alpha_c = 1.0 - alpha_s
                     for c in range(3):
-                        composite[:, :, c] = submask[:, :, c] * alpha_s + composite[:, :, c] * alpha_c
+                        composite[:, :, c] = (
+                            submask[:, :, c] * alpha_s + composite[:, :, c] * alpha_c
+                        )
 
                 if self.plot_segmentation:
-                composite = cv2.cvtColor(composite, cv2.COLOR_BGR2RGB)
+                    composite = cv2.cvtColor(composite, cv2.COLOR_BGR2RGB)
                     cv2.imwrite(f"{self.images_dir}/{im_ident}_n={n}.png", composite)
 
-        annotated_dataset.write_out(f'{self.output_dir}/annot_{today()}_{ds_name}.json')
+        annotated_dataset.write_out(f"{self.output_dir}/annot_{today()}_{ds_name}.json")
 
-        particles.write_out(f'{self.output_dir}/particles.csv', comment='lengths are in pixels')
+        particles.write_out(
+            f"{self.output_dir}/particles_{ds_name}.csv",
+            comment="lengths are in pixels",
+        )
 
-        self.plot_particles(particles)
+        self.plot_particles(particles, ds_name)
 
         particles_by_dir = particles.split_by_dir()
         for dn, ps in particles_by_dir.items():
-            self.plot_n_particles_dynamic(ps, dn.replace('/', '-').replace('\\', '-'))
+            self.plot_n_particles_dynamic(ps, dn.replace("/", "-").replace("\\", "-"))
 
         print(len(annotated_dataset.annotations))
 
-    def plot_particles(self, particles, tag=''):
+    def plot_particles(self, particles, ds_name: str):
         if isinstance(particles, Particles):
             particles = particles.particles
         keys = Particle.CSV_HEADER
         dicts = [p.to_dict() for p in particles]
         values = {k: [d[k] for d in dicts] for k in keys}
         plot_specs = [
-            ('length', 'width'),
-            ('length', 'circularity'),
-            ('width', 'focus_GDER'),
-            ('focus_GDER', 'convexity'),
-            ('length', 'aspect_ratio'),
-            ('aspect_ratio', 'area')
+            ("length", "width"),
+            ("length", "circularity"),
+            ("width", "focus_GDER"),
+            ("focus_GDER", "convexity"),
+            ("length", "aspect_ratio"),
+            ("aspect_ratio", "area"),
         ]
 
         for xlbl, ylbl in plot_specs:
@@ -339,21 +387,21 @@ class COCOPredictor:
             xunit = Particle.unit_of(xlbl)
             yunit = Particle.unit_of(ylbl)
             plt.figure()
-            plt.plot(x, y, 'o', alpha=0.5)
-            plt.xlabel(f'{xlbl} [{xunit}]')
-            plt.ylabel(f'{ylbl} [{yunit}]')
+            plt.plot(x, y, "o", alpha=0.5)
+            plt.xlabel(f"{xlbl} [{xunit}]")
+            plt.ylabel(f"{ylbl} [{yunit}]")
             plt.tight_layout()
-            plt.savefig(f'{self.output_dir}/fig_{ylbl}_v_{xlbl}{tag}.pdf')
+            plt.savefig(f"{self.output_dir}/fig_{ylbl}_v_{xlbl}_{ds_name}.pdf")
             plt.close()
 
     def get_fn_chunks(self):
         fns = []
         for dsname in self.datasets:
-            fns.extend([d['file_name'] for d in DatasetCatalog.get(dsname)])
+            fns.extend([d["file_name"] for d in DatasetCatalog.get(dsname)])
         fns = sorted(fns)
 
         w = 20
-        fn_chunks = [fns[i:i+w] for i in range(0, len(fns), w)]
+        fn_chunks = [fns[i : i + w] for i in range(0, len(fns), w)]
         return fn_chunks
 
     def plot_n_particles_dynamic(self, particles, tag):
@@ -365,18 +413,18 @@ class COCOPredictor:
         for i, particles in enumerate(particless):
             y[i] = len(particles)
 
-        xtl = ['...'+c[0][-10:] for c in chunks]
+        xtl = ["..." + c[0][-10:] for c in chunks]
         xt = x
 
         max_ticks = 10
         if len(x) > max_ticks:
-            xt = xt[::len(x)//max_ticks]
-            xtl = xtl[::len(x)//max_ticks]
+            xt = xt[:: len(x) // max_ticks]
+            xtl = xtl[:: len(x) // max_ticks]
 
         plt.figure()
         plt.plot(x, y)
-        plt.xticks(xt, xtl, rotation=45, ha='right')
-        plt.ylabel('Particle count')
+        plt.xticks(xt, xtl, rotation=45, ha="right")
+        plt.ylabel("Particle count")
         plt.tight_layout()
-        plt.savefig(f'{self.output_dir}/fig_particle_count{tag}.pdf')
+        plt.savefig(f"{self.output_dir}/fig_particle_count{tag}.pdf")
         plt.close()
