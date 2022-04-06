@@ -12,16 +12,19 @@ from ..hooks.base import Hooks, HookBase, D2_HookBase
 
 class TrainerBase:
 
-    def __init__(self, n_epochs, train_loader, test_loader):
+    def __init__(self, n_epochs, train_loader, valid_loader, test_loader):
         self.n_epochs = n_epochs
         self.epoch = 0
         self.total_train_batches = 0
+        self.total_valid_batches = 0
         self.total_test_batches = 0
         self.hooks = Hooks()
         self.train_loader = train_loader
+        self.valid_loader = valid_loader
         self.test_loader = test_loader
         self.storage: Optional[EventStorage] = None
         self.this_batch_train_loss = 0.0
+        self.this_batch_valid_loss = 0.0
         self.this_batch_test_loss = 0.0
 
     @property
@@ -68,14 +71,14 @@ class TrainerBase:
                         self.storage.step()
                         self.hooks.after_train_batch()
 
-                    # Test
+                    # Validation
                     with torch.no_grad():
-                        for batch in self.test_loader:
-                            self.hooks.before_test_batch()
-                            self.this_batch_test_loss = self.do_test_batch(batch)
-                            self.total_test_batches += 1
+                        for batch in self.valid_loader:
+                            self.hooks.before_valid_batch()
+                            self.this_batch_valid_loss = self.do_valid_batch(batch)
+                            self.total_valid_batches += 1
                             self.storage.step()
-                            self.hooks.after_test_batch()
+                            self.hooks.after_valid_batch()
 
                     self.hooks.after_epoch()
             except Exception:
@@ -118,6 +121,9 @@ class TrainerBase:
         return dict(epoch=self.epoch, train_batch=self.total_train_batches, test_batch=self.total_test_batches)
 
     def do_train_batch(self, batch) -> float:
+        raise NotImplementedError
+
+    def do_valid_batch(self, batch) -> float:
         raise NotImplementedError
 
     def do_test_batch(self, batch) -> float:

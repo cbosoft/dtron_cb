@@ -21,7 +21,7 @@ class LossEvalHook(HookBase):
         self._period = cfg.TEST.EVAL_PERIOD
         self._data_loader = build_detection_test_loader(
             cfg,
-            cfg.DATASETS.TEST[0],
+            cfg.DATASETS.VALID[0],
             DatasetMapper(cfg, True)
         )
 

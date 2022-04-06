@@ -34,10 +34,10 @@ class HookBase(D2_HookBase):
     def after_train_batch(self):
         pass
 
-    def before_test_batch(self):
+    def before_valid_batch(self):
         pass
 
-    def after_test_batch(self):
+    def after_valid_batch(self):
         pass
 
     def after_epoch(self):
@@ -82,17 +82,17 @@ class Hooks:
             except AttributeError:
                 continue
 
-    def before_test_batch(self):
+    def before_valid_batch(self):
         for hook in self._hooks:
             try:
-                hook.before_test_batch()
+                hook.before_valid_batch()
             except AttributeError:
                 continue
 
-    def after_test_batch(self):
+    def after_valid_batch(self):
         for hook in self._hooks:
             try:
-                hook.after_test_batch()
+                hook.after_valid_batch()
             except AttributeError:
                 continue
 

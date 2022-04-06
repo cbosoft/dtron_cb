@@ -104,6 +104,7 @@ def plot_qualitative_segm(dataset: List[dict], model, rows=4, fn: str = None, w=
 class QualitativeSegmHook(HookBase):
 
     def __init__(self, cfg: CfgNode, model):
+        self.valid = cfg.DATASETS.VALID
         self.test = cfg.DATASETS.TEST
         self.output_dir = cfg.OUTPUT_DIR
         # self.init_cfg = cfg.clone()
@@ -119,17 +120,24 @@ class QualitativeSegmHook(HookBase):
     def before_train(self):
         self.model.eval()
         with torch.no_grad():
-            for testn in self.test:
-                dataset = DatasetCatalog.get(testn)
-                plot_qualitative_segm(dataset, self.model, fn=f'{self.output_dir}/qualitative_segm_before_{testn}.pdf',
-                                      crop=self.crop, px_thresh=self.px_thresh, ov_thresh=self.ov_thresh)
+            self.qual_segm(self.test, 'before')
+            self.qual_segm(self.valid, 'before')
         self.model.train()
 
     def after_train(self):
         self.model.eval()
         with torch.no_grad():
-            for testn in self.test:
-                dataset = DatasetCatalog.get(testn)
-                plot_qualitative_segm(dataset, self.model, fn=f'{self.output_dir}/qualitative_segm_after_{testn}.pdf',
-                                      crop=self.crop, px_thresh=self.px_thresh, ov_thresh=self.ov_thresh)
+            self.qual_segm(self.test, 'after')
+            self.qual_segm(self.valid, 'after')
         self.model.train()
+
+    def qual_segm(self, set_names: List[str], tag: str):
+        for set_name in set_names:
+            try:
+                dataset = DatasetCatalog.get(set_name)
+            except KeyError:
+                print(f'{set_name} not registered, skipping (in {self.__class__.__name__})')
+                continue
+            plot_qualitative_segm(
+                dataset, self.model, fn=f'{self.output_dir}/qualitative_segm_{tag}_{set_name}.pdf',
+                crop=self.crop, px_thresh=self.px_thresh, ov_thresh=self.ov_thresh)

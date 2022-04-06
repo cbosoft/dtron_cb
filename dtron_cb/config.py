@@ -26,6 +26,7 @@ def apply_defaults(config: CfgNode) -> CfgNode:
     config.DATASETS.ROOT = '/media/raid/cboyle/datasets'
     config.DATASETS.NAMES = None
     config.DATASETS.TRAIN = None
+    config.DATASETS.VALID = None
     config.DATASETS.TEST = None
     config.DATASETS.TRAIN_FRACTION = 0.8
 
@@ -95,6 +96,7 @@ def finalise(config: CfgNode):
         if not config.DATASETS.TRAIN:
             config.DATASETS.TRAIN = tuple([f'{n}_train' for n in config.DATASETS.NAMES])
             config.DATASETS.TEST = tuple([f'{n}_test' for n in config.DATASETS.NAMES])
+            config.DATASETS.VALID = tuple([f'{n}_valid' for n in config.DATASETS.NAMES])
 
     if config.SEED is None or config.SEED < 0:
         config.SEED = random.randint(0, 1_000_000)
