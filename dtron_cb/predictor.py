@@ -15,55 +15,8 @@ from detectron2.checkpoint import DetectionCheckpointer
 from .utils.today import today
 from .utils.ensure_dir import ensure_dir
 from .config import CfgNode
-from .particle import Particle, ParticleConstructionError
+from .particle import Particle, Particles, ParticleConstructionError
 from .coco import COCO_Dataset, Category, Image, Annotation
-
-
-class Particles:
-
-    def __init__(self, *particles):
-        self.particles: List[Particle] = [*particles]
-
-    def add(self, fn: str, orig_image: np.ndarray, contour, px2um, score, on_border_thresh):
-        self.particles.append(Particle(fn, orig_image, contour, px2um, score, on_border_thresh))
-
-    def write_out(self, fn: str, comment=None):
-        csv_lines = [','.join(Particle.CSV_HEADER)]
-        if comment:
-            csv_lines.insert(0, '# ' + comment)
-        for particle in sorted(self.particles):
-            csv_lines.append(particle.to_csv_line())
-
-        with open(fn, 'w') as f:
-            for line in csv_lines:
-                f.write(f'{line}\n')
-
-    def split_by_dir(self) -> Dict[str, "Particles"]:
-        by_dir = dict()
-        for p in self.particles:
-            fn = p.image_file_name
-            dn = os.path.dirname(fn)
-            if dn not in by_dir:
-                by_dir[dn] = list()
-            by_dir[dn].append(p)
-
-        return {k: Particles(*sorted(v)) for k, v in by_dir.items()}
-
-    def split_by_fn_chunks(self, fnss: List[str]):
-        chunks = [list() for _ in fnss]
-        for i, fns in enumerate(fnss):
-            for p in self.particles:
-                if p.image_file_name in fns:
-                    chunks[i].append(p)
-        return chunks
-
-    def to_dict(self) -> Dict[str, list]:
-        values = {k: list() for k in Particle.CSV_HEADER}
-        for p in self.particles:
-            d = p.to_dict()
-            for k in Particle.CSV_HEADER:
-                values[k].append(d[k])
-        return values
 
 
 class COCOPredictor:
