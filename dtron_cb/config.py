@@ -29,6 +29,7 @@ def apply_defaults(config: CfgNode) -> CfgNode:
     config.DATASETS.VALID = None
     config.DATASETS.TEST = None
     config.DATASETS.TRAIN_FRACTION = 0.8
+    config.DATASETS.TEST_FRACTION = 0.8
 
     config.TEST.EVAL_PERIOD = -1
 
@@ -68,7 +69,15 @@ def apply_defaults(config: CfgNode) -> CfgNode:
     config.INFERENCE.PIXEL_THRESH = 0.5
     config.INFERENCE.OVERALL_THRESH = 0.5
     config.INFERENCE.PX_TO_UM = 1075/1360  # px2um (um/px) for PVM
-    config.INFERENCE.ON_BORDER_THRESH = 5 # pixels
+    config.INFERENCE.ON_BORDER_THRESH = 5  # pixels
+
+    config.THRESH_OPT = CfgNode()
+    config.THRESH_OPT.PIXEL_THRESH_MIN = 0.1
+    config.THRESH_OPT.PIXEL_THRESH_MAX = 0.9
+    config.THRESH_OPT.PIXEL_THRESH_N = 7
+    config.THRESH_OPT.OVERALL_THRESH_MIN = 0.1
+    config.THRESH_OPT.OVERALL_THRESH_MAX = 0.9
+    config.THRESH_OPT.OVERALL_THRESH_N = 7
 
     return config
 
@@ -80,6 +89,8 @@ def finalise(config: CfgNode):
     assert config.TEST.EVAL_PERIOD < 0, 'Test eval period is ignored; eval is performed once per epoch.'
 
     assert 0.1 < config.DATASETS.TRAIN_FRACTION < 0.9
+    assert 0.0 <= config.THRESH_OPT.PIXEL_THRESH_MIN < config.THRESH_OPT.PIXEL_THRESH_MAX <= 1.0
+    assert 0.0 <= config.THRESH_OPT.OVERALL_THRESH_MIN < config.THRESH_OPT.OVERALL_THRESH_MAX < 1.0
 
     assert 0.0 < config.INFERENCE.PIXEL_THRESH <= 1.0, 'Pixel threshold should be between 0.0 and 1.0. Probabilities are now always calculated, you don\'t need to change the threshold.'
     assert 0.0 < config.INFERENCE.OVERALL_THRESH <= 1.0, 'Overall threshold should be between 0.0 and 1.0.'

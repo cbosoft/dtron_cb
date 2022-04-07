@@ -44,12 +44,13 @@ def register_test_train(root_path: str, json_file_path: str, train_frac=0.8, tes
 def register_datasets(config: CfgNode):
     datasets_root = config.DATASETS.ROOT
     train_frac = config.DATASETS.TRAIN_FRACTION
+    test_frac = config.DATASETS.TEST_FRACTION
     datasets_files = glob(f'{datasets_root}/*.json')
 
     DatasetCatalog.clear()
     MetadataCatalog.clear()
     for dsf in datasets_files:
-        register_test_train(datasets_root, dsf, train_frac=train_frac,
+        register_test_train(datasets_root, dsf, train_frac=train_frac, test_frac=test_frac,
                             strip_empty=config.DATALOADER.FILTER_EMPTY_ANNOTATIONS)
 
     if config.ACTION in ('train', 'xval'):

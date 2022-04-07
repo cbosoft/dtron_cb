@@ -85,6 +85,7 @@ class Trainer(TrainerBase):
             PeriodicCheckpointer(self.checkpointer, self.config.SOLVER.CHECKPOINT_PERIOD),
             PeriodicWriter(self.build_writers(), period=1),
             DisplayProgressHook(),
+            ThresholdOptimiserHook(self.config),
             # Must be last
             CopyCompleteHook(self.config)
         ]
