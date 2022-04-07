@@ -54,8 +54,10 @@ def apply_defaults(config: CfgNode) -> CfgNode:
     config.EXPERIMENTS_META.SHOULD_COPY_ROOT = False
 
     config.DATA = CfgNode()
+    # transformations/augmentations: https://detectron2.readthedocs.io/en/latest/modules/data_transforms.html
     config.DATA.AUGMENTATIONS = [
-        'T.ResizeShortestEdge(short_edge_length=[640, 672, 704, 736, 768, 800], max_size=1333, sample_style=\'choice\')',
+        'T.ResizeShortestEdge(short_edge_length=[512], sample_style=\'choice\')',
+        # 'T.Resize((512, 512))',
         'T.RandomFlip()',
         'T.RandomBrightness(0.9, 1.1)',
         'T.RandomContrast(0.9, 1.1)'
