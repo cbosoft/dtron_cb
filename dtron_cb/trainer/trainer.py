@@ -2,7 +2,6 @@ import logging
 import weakref
 
 import torch
-from torch.utils.data import Dataset as _Dataset, DataLoader
 import torch.nn as nn
 
 from detectron2.data import DatasetMapper, build_detection_train_loader, build_detection_test_loader, DatasetCatalog
@@ -28,23 +27,12 @@ from ..hooks import (
     CopyCompleteHook,
     WriteMetaHook,
     DeployModelHook,
-    DisplayProgressHook
+    DisplayProgressHook,
+    ThresholdOptimiserHook
 )
 
+from .dataset import Dataset, DataLoader
 from .base import TrainerBase
-
-
-class Dataset(_Dataset):
-
-    def __init__(self, data, mapper):
-        self.mapper = mapper
-        self.data = data
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, item):
-        return self.mapper(self.data[item])
 
 
 class Trainer(TrainerBase):
@@ -59,7 +47,8 @@ class Trainer(TrainerBase):
         self.optimiser = build_optimizer(config, self.model)
         train_loader = self.build_train_loader(config)
         test_loader = self.build_test_loader(config)
-        super().__init__(config.SOLVER.N_EPOCHS, train_loader, test_loader)
+        valid_loader = self.build_valid_loader(config)
+        super().__init__(config.SOLVER.N_EPOCHS, train_loader, valid_loader, test_loader)
         self.scheduler = build_lr_scheduler(config, self.optimiser)
         self.checkpointer = DetectionCheckpointer(
             # Assume you want to save checkpoints together with logs/statistics
@@ -96,6 +85,7 @@ class Trainer(TrainerBase):
             PeriodicCheckpointer(self.checkpointer, self.config.SOLVER.CHECKPOINT_PERIOD),
             PeriodicWriter(self.build_writers(), period=1),
             DisplayProgressHook(),
+            ThresholdOptimiserHook(self.config),
             # Must be last
             CopyCompleteHook(self.config)
         ]
@@ -121,6 +111,19 @@ class Trainer(TrainerBase):
         return DataLoader(ds, batch_size=config.SOLVER.IMS_PER_BATCH, shuffle=True, collate_fn=lambda b: b)
 
     @classmethod
+    def build_valid_loader(cls, config):
+        augs = []
+        if config.DATA.CROP:
+            augs.insert(0, T.CropTransform(*config.DATA.CROP))
+        # is_train = True so that the model output is more detailed, not post-processed etc
+        mapper = DatasetMapper(config, is_train=True, augmentations=augs)
+        dicts = []
+        for dsname in config.DATASETS.VALID:
+            dicts.extend(DatasetCatalog.get(dsname))
+        ds = Dataset(dicts, mapper)
+        return DataLoader(ds, batch_size=config.SOLVER.IMS_PER_BATCH, shuffle=True, collate_fn=lambda b: b)
+
+    @classmethod
     def build_test_loader(cls, config):
         augs = []
         if config.DATA.CROP:
@@ -129,7 +132,12 @@ class Trainer(TrainerBase):
         mapper = DatasetMapper(config, is_train=True, augmentations=augs)
         dicts = []
         for dsname in config.DATASETS.TEST:
-            dicts.extend(DatasetCatalog.get(dsname))
+            try:
+                dicts.extend(DatasetCatalog.get(dsname))
+            except KeyError:
+                pass
+        if not dicts:
+            return None
         ds = Dataset(dicts, mapper)
         return DataLoader(ds, batch_size=config.SOLVER.IMS_PER_BATCH, shuffle=True, collate_fn=lambda b: b)
 
@@ -181,7 +189,7 @@ class Trainer(TrainerBase):
 
         return float(losses.detach().cpu().item())
 
-    def do_test_batch(self, batch) -> float:
+    def do_valid_batch(self, batch) -> float:
         loss_dict = self.model(batch)
         if isinstance(loss_dict, torch.Tensor):
             losses = loss_dict
@@ -193,7 +201,7 @@ class Trainer(TrainerBase):
         renamed_loss_dict = dict()
         for k, v in loss_dict.items():
             k = k.replace('loss_', '')
-            k = f'loss/test/{k}'
+            k = f'loss/valid/{k}'
             renamed_loss_dict[k] = v
 
         storage.put_scalars(**renamed_loss_dict, **self.time_data(), smoothing_hint=False)

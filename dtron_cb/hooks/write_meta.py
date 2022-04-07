@@ -30,3 +30,17 @@ class WriteMetaHook(HookBase):
 
         with open(f'{self.output_dir}/model.txt', 'w') as f:
             f.write(self.model_text)
+
+        self.write_listing(self.trainer.train_loader, 'train')
+        self.write_listing(self.trainer.valid_loader, 'valid')
+        if self.trainer.test_loader is not None:
+            self.write_listing(self.trainer.test_loader, 'test')
+
+    def write_listing(self, dl, name):
+        fns = []
+        for b in dl:
+            for bi in b:
+                fns.append(bi['file_name'])
+        with open(f'{self.output_dir}/listing_{name}.txt', 'w') as f:
+            for fn in fns:
+                f.write(f'{fn}\n')

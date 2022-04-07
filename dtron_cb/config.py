@@ -29,8 +29,10 @@ def apply_defaults(config: CfgNode) -> CfgNode:
     config.DATASETS.PATTERN = None
     config.DATASETS.NAMES = None
     config.DATASETS.TRAIN = None
+    config.DATASETS.VALID = None
     config.DATASETS.TEST = None
     config.DATASETS.TRAIN_FRACTION = 0.8
+    config.DATASETS.TEST_FRACTION = 0.8
 
     config.TEST.EVAL_PERIOD = -1
 
@@ -56,11 +58,13 @@ def apply_defaults(config: CfgNode) -> CfgNode:
     config.EXPERIMENTS_META.SHOULD_COPY_ROOT = False
 
     config.DATA = CfgNode()
+    # transformations/augmentations: https://detectron2.readthedocs.io/en/latest/modules/data_transforms.html
     config.DATA.AUGMENTATIONS = [
-        "T.ResizeShortestEdge(short_edge_length=[640, 672, 704, 736, 768, 800], max_size=1333, sample_style='choice')",
-        "T.RandomFlip()",
-        "T.RandomBrightness(0.9, 1.1)",
-        "T.RandomContrast(0.9, 1.1)",
+        'T.ResizeShortestEdge(short_edge_length=[512], sample_style=\'choice\')',
+        # 'T.Resize((512, 512))',
+        'T.RandomFlip()',
+        'T.RandomBrightness(0.9, 1.1)',
+        'T.RandomContrast(0.9, 1.1)'
     ]
     config.DATA.CROP = None
 
@@ -70,6 +74,14 @@ def apply_defaults(config: CfgNode) -> CfgNode:
     config.INFERENCE.PX_TO_UM = 1075 / 1360  # px2um (um/px) for PVM
     config.INFERENCE.ON_BORDER_THRESH = 5  # pixels
     config.INFERENCE.PLOT_SEGM = True
+
+    config.THRESH_OPT = CfgNode()
+    config.THRESH_OPT.PIXEL_THRESH_MIN = 0.1
+    config.THRESH_OPT.PIXEL_THRESH_MAX = 0.9
+    config.THRESH_OPT.PIXEL_THRESH_N = 7
+    config.THRESH_OPT.OVERALL_THRESH_MIN = 0.1
+    config.THRESH_OPT.OVERALL_THRESH_MAX = 0.9
+    config.THRESH_OPT.OVERALL_THRESH_N = 7
 
     return config
 
@@ -85,6 +97,8 @@ def finalise(config: CfgNode):
     ), "Test eval period is ignored; eval is performed once per epoch."
 
     assert 0.1 < config.DATASETS.TRAIN_FRACTION < 0.9
+    assert 0.0 <= config.THRESH_OPT.PIXEL_THRESH_MIN < config.THRESH_OPT.PIXEL_THRESH_MAX <= 1.0
+    assert 0.0 <= config.THRESH_OPT.OVERALL_THRESH_MIN < config.THRESH_OPT.OVERALL_THRESH_MAX < 1.0
 
     assert (
         0.0 < config.INFERENCE.PIXEL_THRESH <= 1.0
@@ -118,8 +132,9 @@ def finalise(config: CfgNode):
 
     if config.ACTION in ("train", "cross_validate"):
         if not config.DATASETS.TRAIN:
-            config.DATASETS.TRAIN = tuple([f"{n}_train" for n in config.DATASETS.NAMES])
-            config.DATASETS.TEST = tuple([f"{n}_test" for n in config.DATASETS.NAMES])
+            config.DATASETS.TRAIN = tuple([f'{n}_train' for n in config.DATASETS.NAMES])
+            config.DATASETS.TEST = tuple([f'{n}_test' for n in config.DATASETS.NAMES])
+            config.DATASETS.VALID = tuple([f'{n}_valid' for n in config.DATASETS.NAMES])
 
     if config.SEED is None or config.SEED < 0:
         config.SEED = random.randint(0, 1_000_000)
