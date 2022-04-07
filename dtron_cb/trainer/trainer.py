@@ -2,7 +2,6 @@ import logging
 import weakref
 
 import torch
-from torch.utils.data import Dataset as _Dataset, DataLoader
 import torch.nn as nn
 
 from detectron2.data import DatasetMapper, build_detection_train_loader, build_detection_test_loader, DatasetCatalog
@@ -28,23 +27,12 @@ from ..hooks import (
     CopyCompleteHook,
     WriteMetaHook,
     DeployModelHook,
-    DisplayProgressHook
+    DisplayProgressHook,
+    ThresholdOptimiserHook
 )
 
+from .dataset import Dataset, DataLoader
 from .base import TrainerBase
-
-
-class Dataset(_Dataset):
-
-    def __init__(self, data, mapper):
-        self.mapper = mapper
-        self.data = data
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, item):
-        return self.mapper(self.data[item])
 
 
 class Trainer(TrainerBase):

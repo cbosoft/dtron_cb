@@ -10,17 +10,19 @@ from detectron2.engine.hooks import HookBase
 from detectron2.data import DatasetCatalog
 import detectron2.data.transforms as T
 from detectron2.modeling.meta_arch.rcnn import GeneralizedRCNN
+from detectron2.data import DatasetMapper
 
 from ...utils.instances_to_mask import instances_to_mask
 from ...config import CfgNode
+from ...trainer.dataset import Dataset, DataLoader
 
 
 Int4 = Tuple[int, int, int, int]
 
 
-def plot_qualitative_segm(dataset: List[dict], model, rows=4, fn: str = None, w=3, px_thresh=0.5, ov_thresh=0.5, crop: Optional[Int4] = None):
+def plot_qualitative_segm(config, dataset: List[dict], model, rows=4, fn: str = None, w=3, px_thresh=0.5, ov_thresh=0.5, crop: Optional[Int4] = None):
     if len(dataset) > rows:
-        dataset = np.random.choice(dataset, rows)
+        dataset = np.random.choice(dataset, rows, replace=False)
     sz = 7
     titles = ['Original', 'Ground Truth', 'Prediction', 'GT Mask', 'Predicted Mask']
     fig, axes = plt.subplots(ncols=len(titles), nrows=len(dataset), figsize=(sz*len(titles), rows*sz), squeeze=False)
@@ -30,7 +32,14 @@ def plot_qualitative_segm(dataset: List[dict], model, rows=4, fn: str = None, w=
     for ax, ttl in zip(axes.flatten(), titles):
         plt.sca(ax)
         plt.title(ttl)
-    for (orig_ax, gt_ax, pred_ax, gt_mask_ax, pred_mask_ax), d in zip(axes, dataset):
+
+    augs = []
+    if crop:
+        augs = [T.CropTransform(*crop)]
+    mapper = DatasetMapper(config, is_train=True, augmentations=augs)
+    ds = Dataset(dataset, mapper)
+    dl = DataLoader(ds, batch_size=1, shuffle=False, collate_fn=lambda b: b)
+    for (orig_ax, gt_ax, pred_ax, gt_mask_ax, pred_mask_ax), d, b in zip(axes, dataset, dl):
         plt.sca(orig_ax)
         im = cv2.imread(d['file_name'])
         if im is None:
@@ -88,6 +97,9 @@ def plot_qualitative_segm(dataset: List[dict], model, rows=4, fn: str = None, w=
             plt.plot(x, y, color=plt.cm.viridis(score))
 
         # TODO GT_MASK
+        plt.sca(gt_mask_ax)
+        mask = instances_to_mask(b[0]['instances'])
+        plt.imshow(mask, cmap='gray')
 
         plt.sca(pred_mask_ax)
         mask = instances_to_mask(inst, score_thresh=ov_thresh)
@@ -116,6 +128,7 @@ class QualitativeSegmHook(HookBase):
         self.crop = cfg.DATA.CROP
         self.ov_thresh = cfg.INFERENCE.OVERALL_THRESH
         self.px_thresh = cfg.INFERENCE.PIXEL_THRESH
+        self.cfg = cfg
 
     def before_train(self):
         self.model.eval()
@@ -139,5 +152,6 @@ class QualitativeSegmHook(HookBase):
                 print(f'{set_name} not registered, skipping (in {self.__class__.__name__})')
                 continue
             plot_qualitative_segm(
+                self.cfg,
                 dataset, self.model, fn=f'{self.output_dir}/qualitative_segm_{tag}_{set_name}.pdf',
                 crop=self.crop, px_thresh=self.px_thresh, ov_thresh=self.ov_thresh)
