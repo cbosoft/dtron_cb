@@ -307,7 +307,7 @@ class COCOPredictor:
                         )
                         n += 1
                     except ParticleConstructionError as e:
-                        print(f"Not adding particle: {e}")
+                        # print(f"Not adding particle: {e}")
                         continue
 
                     # c = [ci*255 for ci in plt.cm.viridis(score)[:3]]
