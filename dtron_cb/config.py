@@ -32,7 +32,7 @@ def apply_defaults(config: CfgNode) -> CfgNode:
     config.DATASETS.VALID = None
     config.DATASETS.TEST = None
     config.DATASETS.TRAIN_FRACTION = 0.8
-    config.DATASETS.TEST_FRACTION = 0.8
+    config.DATASETS.TEST_FRACTION = 0.1
 
     config.TEST.EVAL_PERIOD = -1
 
