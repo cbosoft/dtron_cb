@@ -5,11 +5,21 @@ from .cross_validator import CrossValidator
 from .utils.today import tick
 
 
-def _run_training(cfg, filename):
+def _run_training(cfg, filename, n=5):
     print(f'Running experiment (training): "{filename}"')
-    trainer = Trainer(cfg)
-    trainer.resume_or_load(resume=False)
-    trainer.train()
+
+    try:
+        trainer = Trainer(cfg)
+        trainer.resume_or_load(resume=False)
+        trainer.train()
+    except FloatingPointError as e:
+        print(f'Training failed: {e}')
+        if n > 0:
+            print(f'Trying again ({n-1} attempts remain)')
+            _run_training(cfg, filename, n-1)
+        else:
+            print('Have reached the maximum number of retries: giving up.')
+            print('Try reducing CONFIG.SOLVER.BASE_LR, or perhaps CONFIG.SOLVER.WARMUP_ITERS')
 
 
 def _run_inference(cfg, filename):
