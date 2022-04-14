@@ -138,11 +138,12 @@ class QualitativeSegmHook(HookBase):
         self.model.train()
 
     def after_train(self):
-        self.model.eval()
-        with torch.no_grad():
-            self.qual_segm(self.test, 'after')
-            self.qual_segm(self.valid, 'after')
-        self.model.train()
+        if self.trainer.state != 'failed':
+            self.model.eval()
+            with torch.no_grad():
+                self.qual_segm(self.test, 'after')
+                self.qual_segm(self.valid, 'after')
+            self.model.train()
 
     def qual_segm(self, set_names: List[str], tag: str):
         for set_name in set_names:

@@ -93,9 +93,10 @@ class MetricsPlotHook(HookBase):
         self.xlbls = LabelsByPattern(xlbls if xlbls else {})
 
     def after_train(self):
-        metrics_plot(
-            f'{self.output_dir}/metrics.json',
-            f'{self.output_dir}/metrics_plot_{{metric}}.pdf',
-            groups=self.groups,
-            x_kind=self.xlbls
-        )
+        if self.trainer.state != 'failed':
+            metrics_plot(
+                f'{self.output_dir}/metrics.json',
+                f'{self.output_dir}/metrics_plot_{{metric}}.pdf',
+                groups=self.groups,
+                x_kind=self.xlbls
+            )

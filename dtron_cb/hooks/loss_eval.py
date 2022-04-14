@@ -113,4 +113,5 @@ class LossEvalHook(HookBase):
         return metrics
 
     def after_epoch(self):
-        self._do_loss_eval()
+        if self.trainer.state != 'failed':
+            self._do_loss_eval()

@@ -13,7 +13,7 @@ class CopyCompleteHook(HookBase):
         self.do_copy = cfg.EXPERIMENTS_META.SHOULD_COPY_ROOT
 
     def after_train(self):
-        if self.do_copy:
+        if self.do_copy and self.trainer.state != 'failed':
             print('Copying results to backup dir')
             print(f'effectively: cp -r "{self.src}" "{self.dest}"')
             shutil.copytree(self.src, self.dest)

@@ -16,10 +16,11 @@ class DeployModelHook(HookBase):
         self.model = model
 
     def after_train(self):
-        self.model.eval()
-        self.deploy_model(self.model.cpu(), self.output_dir)
-        self.deploy_model(self.model.cuda(), self.output_dir)
-        self.model.train()
+        if self.trainer.state != 'failed':
+            self.model.eval()
+            self.deploy_model(self.model.cpu(), self.output_dir)
+            self.deploy_model(self.model.cuda(), self.output_dir)
+            self.model.train()
 
     @staticmethod
     def deploy_model(model, output_dir: str):

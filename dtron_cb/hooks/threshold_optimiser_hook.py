@@ -31,7 +31,7 @@ class ThresholdOptimiserHook(HookBase):
         self.output_dir = config.OUTPUT_DIR
 
     def after_train(self):
-        if self.enabled:
+        if self.enabled and self.trainer.state != 'failed':
             px_thresh, ov_thrsh = self.do_thresh_opt()
 
             # run evaluation/metric calculation on test set, using thresholds defined above

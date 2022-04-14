@@ -26,6 +26,7 @@ class TrainerBase:
         self.this_batch_train_loss = 0.0
         self.this_batch_valid_loss = 0.0
         self.this_batch_test_loss = 0.0
+        self.state = 'pre'
 
     @property
     def iter(self) -> int:
@@ -58,6 +59,7 @@ class TrainerBase:
         self.hooks.extend(hooks)
 
     def train(self):
+        self.state = 'training'
         logger = logging.getLogger(__name__)
         with EventStorage(0) as self.storage:
             try:
@@ -82,6 +84,7 @@ class TrainerBase:
 
                     self.hooks.after_epoch()
             except Exception:
+                self.state = 'failed'
                 logger.exception("Exception during training:")
                 raise
             finally:
