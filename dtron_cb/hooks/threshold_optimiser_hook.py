@@ -58,9 +58,40 @@ class ThresholdOptimiserHook(HookBase):
 
         return precisions, recalls, best_i, best_px_thresh, best_ov_thresh
 
+    def simple_grad_desc_opt(self):
+        # TODO: WIP
+        n_fev = self.n_measurements*self.n_measurements
+
+        precisions, recalls, residuals = np.zeros((3, n_fev))
+
+        px_thresh, prev_px_thresh = np.random.normal(0.5, 0.05, 2)
+        ov_thresh, prev_ov_thresh = np.random.uniform(0.0, 1.0, 2)
+
+        precisions[0], recalls[0] = self.get_precision_recall(prev_px_thresh, prev_ov_thresh)
+        residuals[0] = ((1. - precisions[0])**2. + (1. - recalls[0])**2.)**.5
+
+        for i in range(1, n_fev):
+            precisions[i], recalls[i] = self.get_precision_recall(px_thresh, ov_thresh)
+            residuals[i] = ((1. - precisions[i])**2. + (1. - recalls[i])**2.)**.5
+
+            dr = residuals[i] - residuals[i-1]
+            dpx = px_thresh - prev_px_thresh
+            dov = ov_thresh - prev_ov_thresh
+
+            n_dpx = -0.5*residuals[i]*dpx/dr
+            n_dov = -0.5*residuals[i]*dov/dr
+
+            prev_px_thresh = px_thresh
+            prev_ov_thresh = ov_thresh
+            px_thresh += n_dpx
+            ov_thresh += n_dov
+
+        return precisions, recalls, n_fev-1, px_thresh, ov_thresh
+
     def do_thresh_opt(self) -> Tuple[float, float]:
 
         precisions, recalls, best_i, best_px_thresh, best_ov_thresh = self.brute_force_opt()
+        # precisions, recalls, best_i, best_px_thresh, best_ov_thresh = self.simple_grad_desc_opt()
 
         # plot
         plt.figure()
