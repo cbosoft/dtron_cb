@@ -37,7 +37,7 @@ class ThresholdOptimiserHook(HookBase):
             # run evaluation/metric calculation on test set, using thresholds defined above
             # TODO
 
-    def do_thresh_opt(self) -> Tuple[float, float]:
+    def brute_force_opt(self):
         precisions = np.zeros(self.n_measurements)
         recalls = np.zeros(self.n_measurements)
         i = 0
@@ -48,13 +48,19 @@ class ThresholdOptimiserHook(HookBase):
                 i += 1
 
         # choose best thresholds
-        dist_to_1 = np.array([((1.-p)**2. + (1.-r)*2.)**.5 for p, r in zip(precisions, recalls)])
+        dist_to_1 = np.array([((1.-p)**2. + (1.-r)**2.)**.5 for p, r in zip(precisions, recalls)])
         dist_to_1[~np.isfinite(dist_to_1)] = np.inf
 
         best_i = np.argmin(dist_to_1)
-        print('min_dist_to_1', dist_to_1[best_i])
+        print('min_dist_to_1', dist_to_1[best_i], precisions[best_i], recalls[best_i])
         best_px_thresh = self.px_thresholds[int(best_i / len(self.ov_thresholds))]
         best_ov_thresh = self.ov_thresholds[best_i % len(self.px_thresholds)]
+
+        return precisions, recalls, best_i, best_px_thresh, best_ov_thresh
+
+    def do_thresh_opt(self) -> Tuple[float, float]:
+
+        precisions, recalls, best_i, best_px_thresh, best_ov_thresh = self.brute_force_opt()
 
         # plot
         plt.figure()
