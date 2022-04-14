@@ -48,7 +48,7 @@ class ThresholdOptimiserHook(HookBase):
                 i += 1
 
         # choose best thresholds
-        dist_to_1 = np.sqrt(np.square(precisions - recalls))
+        dist_to_1 = np.array([((1.-p)**2. + (1.-r)*2.)**.5 for p, r in zip(precisions, recalls)])
         dist_to_1[~np.isfinite(dist_to_1)] = np.inf
 
         best_i = np.argmin(dist_to_1)
