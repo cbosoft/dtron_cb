@@ -56,6 +56,7 @@ def apply_defaults(config: CfgNode) -> CfgNode:
     config.EXPERIMENTS_META.ROOT = "training_results"
     config.EXPERIMENTS_META.FINAL_ROOT = None
     config.EXPERIMENTS_META.SHOULD_COPY_ROOT = False
+    config.EXPERIMENTS_META.TAG = "untagged"
 
     config.DATA = CfgNode()
     # transformations/augmentations: https://detectron2.readthedocs.io/en/latest/modules/data_transforms.html
@@ -112,7 +113,7 @@ def finalise(config: CfgNode):
         config.EXPERIMENTS_META.ROOT
     ), f'"config.EXPERIMENTS_META.ROOT" must be set with a location to store experiment information while running.'
     config.OUTPUT_DIR = ensure_dir(
-        f"{config.EXPERIMENTS_META.ROOT}/{today()}_{config.ACTION}"
+        f"{config.EXPERIMENTS_META.ROOT}/{today()}_{config.ACTION}_{config.EXPERIMENTS_META.TAG}"
     )
     config.EXPERIMENTS_META.SHOULD_COPY_ROOT = (
         config.EXPERIMENTS_META.FINAL_ROOT is not None
