@@ -61,7 +61,7 @@ class COCOPredictor:
         particles = Particles()
 
         with torch.no_grad():
-            for d in tqdm(ds, ncols=20):
+            for d in tqdm(ds, ncols=80):
                 d = dict(**d)
                 fn = d["file_name"]
                 del d["file_name"]
