@@ -1,4 +1,5 @@
 from typing import List, Tuple, Optional
+import os
 
 from matplotlib import pyplot as plt
 from matplotlib.cm import ScalarMappable
@@ -85,8 +86,6 @@ def plot_qualitative_segm(config, dataset: List[dict], model, rows=4, fn: str = 
             for c in range(3):
                 composite[:, :, c] = submask[:, :, c]*alpha_s + composite[:, :, c]*alpha_c
         plt.imshow(composite)
-        smap = ScalarMappable(cmap='viridis')
-        plt.colorbar(smap).ax.set_ylabel('Score [0,1]')
 
         for i, (bbox, score) in enumerate(zip(inst.pred_boxes, inst.scores)):
             score = float(score.cpu())
@@ -110,6 +109,14 @@ def plot_qualitative_segm(config, dataset: List[dict], model, rows=4, fn: str = 
         plt.show()
     else:
         plt.savefig(fn)
+        plt.close()
+
+        plt.figure(figsize=(2, 5))
+        plt.axis('off')
+        smap = ScalarMappable(cmap='viridis')
+        plt.colorbar(smap, ax=plt.gca()).ax.set_ylabel('Score [0,1]')
+        plt.tight_layout()
+        plt.savefig(os.path.dirname(fn)+'/qual_colourbar.pdf')
         plt.close()
 
 
