@@ -65,6 +65,12 @@ def metrics_plot(metrics_json_path: str, outfn: str = None,
             plt.plot(t, m)
         plt.xlabel(x_label)
         plt.ylabel(name)
+
+        # hardcoded for now
+        # TODO: add option for this
+        if name == 'lr' or 'loss' in name:
+            plt.yscale('log')
+
         plt.tight_layout()
         if outfn is None:
             plt.show()
